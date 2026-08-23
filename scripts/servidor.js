@@ -17,8 +17,15 @@ const TIPOS = {
 };
 
 createServer(async (req, res) => {
-  let caminho = decodeURIComponent(req.url.split("?")[0]);
-  if (caminho === "/") caminho = "/src/web/index.html";
+  const caminho = decodeURIComponent(req.url.split("?")[0]);
+  // redirect, não rewrite: servir o conteúdo em "/" deixaria o navegador na
+  // raiz, e aí ./app.js e ../../dados/*.json resolvem para caminhos que não
+  // existem — a página abre estática, sem pergunta nenhuma.
+  if (caminho === "/") {
+    res.writeHead(302, { Location: "/src/web/index.html" });
+    res.end();
+    return;
+  }
   const alvo = join(RAIZ, normalize(caminho).replace(/^(\.\.[/\\])+/, ""));
   try {
     const dados = await readFile(alvo);
