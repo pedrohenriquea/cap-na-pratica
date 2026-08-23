@@ -122,6 +122,46 @@ export function avaliar(base, politica, respostas) {
 }
 
 /**
+ * Explicação positiva do vencedor. avaliar() só registra o que cada banco
+ * perdeu; aqui a mesma conta vira argumento a favor: as exigências que o
+ * vencedor cumpre e que eliminaram os outros, e as perdas do vice que ele
+ * não tem. Não concede ponto nenhum — só traduz o resultado.
+ */
+export function porQueVenceu(politica, resultado) {
+  const vencedor = resultado.viaveis[0];
+  if (!vencedor) return [];
+  const razoes = [];
+
+  // exigências bloqueantes que derrubaram candidatos — o vencedor, por ser
+  // viável, cumpre todas elas
+  const porPergunta = new Map();
+  for (const b of resultado.inviaveis)
+    for (const blq of b.bloqueios) {
+      if (!porPergunta.has(blq.pergunta)) porPergunta.set(blq.pergunta, new Set());
+      porPergunta.get(blq.pergunta).add(b.nome);
+    }
+  const titulos = Object.fromEntries(politica.perguntas.map(q => [q.id, q.titulo]));
+  [...porPergunta.entries()]
+    .sort((a, b) => b[1].size - a[1].size)
+    .slice(0, 3)
+    .forEach(([pergunta, nomes]) =>
+      razoes.push({ tipo: "exigencia", titulo: titulos[pergunta] || pergunta, eliminados: [...nomes] }));
+
+  // perdas do segundo colocado que o vencedor não compartilha
+  const vice = resultado.viaveis[1];
+  if (vice) {
+    const chave = p => p.pergunta + "|" + p.capacidade;
+    const doVencedor = new Set(vencedor.perdas.map(chave));
+    vice.perdas
+      .filter(p => !doVencedor.has(chave(p)))
+      .sort((a, b) => b.custo - a.custo)
+      .slice(0, 2)
+      .forEach(p => razoes.push({ tipo: "vantagem", sobre: vice.nome, motivo: p.motivo, custo: p.custo }));
+  }
+  return razoes;
+}
+
+/**
  * Análise de sensibilidade: para cada pergunta, troca a resposta por cada
  * alternativa e verifica se o vencedor muda. Responde "qual resposta minha
  * está realmente segurando esse resultado".

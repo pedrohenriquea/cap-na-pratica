@@ -1,9 +1,9 @@
 # Seletor de banco de dados
 
 Dez perguntas sobre o que você está construindo — nenhuma sobre banco de
-dados. Devolve um ranking, a trilha de como cada ponto foi perdido, quais das
-suas respostas realmente seguram o resultado, e um ADR pronto para o
-repositório.
+dados. Devolve um ranking, por que o vencedor venceu e como cada ponto foi
+perdido, quais das suas respostas realmente seguram o resultado, e um ADR
+pronto para o repositório.
 
 Zero dependências. Node só para servir os arquivos e rodar os testes.
 
@@ -11,7 +11,7 @@ Zero dependências. Node só para servir os arquivos e rodar os testes.
 
 ```bash
 npm start     # http://localhost:5173
-npm test      # 24 testes: 10 casos-âncora + invariantes do motor e dos dados
+npm test      # 29 testes: âncoras, invariantes, robustez de pesos, pares adversariais
 ```
 
 Não abra `src/web/index.html` direto pelo Explorer. O navegador bloqueia
@@ -94,7 +94,13 @@ capacidades — um teste verifica que nenhuma ficou faltando.
 **Discordar de um resultado:** adicione um caso em `motor.test.js` com o
 vencedor que você defenderia, e ajuste o peso até passar sem quebrar os
 outros. Os casos-âncora são o contrato: se um quebrar depois de você mexer num
-peso, o ajuste está errado — não o caso.
+peso, o ajuste está errado — não o caso. Dois testes vigiam a saúde desse
+contrato: todo banco precisa vencer ou empatar tecnicamente em algum âncora
+(banco que nunca chega perto está sobrando, ou falta o âncora dele), e todo
+vencedor precisa sobreviver a ±20% em cada peso (âncora que vira com
+perturbação pequena está apoiado em coincidência numérica, não em estrutura).
+Cenários onde dois bancos são genuinamente defensáveis viram caso adversarial:
+o contrato é o par no topo, e a ordem fica para o aviso de empate técnico.
 
 **Mudar uma pergunta:** só `dados/perguntas.json`. Todo requisito precisa de um
 `motivo` em texto; sem motivo não há explicação para mostrar ao usuário, e o

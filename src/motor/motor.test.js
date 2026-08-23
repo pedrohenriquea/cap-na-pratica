@@ -1,7 +1,7 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { avaliar, sensibilidade, consolidar } from "./motor.js";
+import { avaliar, sensibilidade, consolidar, porQueVenceu } from "./motor.js";
 
 const ler = p => JSON.parse(readFileSync(new URL(p, import.meta.url), "utf-8"));
 const base = ler("../../dados/bancos.json");
@@ -125,6 +125,90 @@ describe("invariantes do motor", () => {
   test("resposta com id inexistente é erro, não silêncio", () => {
     assert.throws(() => avaliar(base, politica, { atomicidade: "nao-existe" }),
       /resposta inválida/);
+  });
+});
+
+describe("robustez da política", () => {
+  /**
+   * Todo banco da base precisa de um cenário defensável: ou vence um âncora,
+   * ou fica a empate técnico (≤10 pontos) do vencedor em algum. Um banco que
+   * nunca chega perto ou está sobrando na base, ou está faltando um âncora.
+   */
+  test("todo banco vence ou empata tecnicamente em algum caso-âncora", () => {
+    const porCaso = CASOS.map(c => avaliar(base, politica, c.r).viaveis);
+    const semLar = base.bancos
+      .filter(b => !porCaso.some(vs => {
+        const v = vs.find(x => x.id === b.id);
+        return v && vs[0].pontos - v.pontos <= 10;
+      }))
+      .map(b => b.id);
+    assert.deepEqual(semLar, [],
+      `sem cenário defensável: ${semLar.join(", ")} — ou falta um âncora, ou o banco não deveria estar na base`);
+  });
+
+  /**
+   * Os pesos (30/12/5 e o 25 do PACELC) são opinião. Se um âncora muda de
+   * vencedor com ±20% num peso, o resultado vinha de coincidência numérica,
+   * não da estrutura — é dado ou âncora para revisar, não peso para travar.
+   */
+  test("vencedores dos âncoras aguentam ±20% em cada peso", () => {
+    const variacoes = [];
+    for (const sev of ["grave", "moderado", "leve"])
+      for (const f of [0.8, 1.2])
+        variacoes.push({ rotulo: `${sev}×${f}`, muda: p => { p.severidades[sev] *= f; } });
+    for (const f of [0.8, 1.2])
+      variacoes.push({ rotulo: `pacelc×${f}`, muda: p => { p.pesoDistanciaPacelc *= f; } });
+
+    for (const v of variacoes) {
+      const p = JSON.parse(JSON.stringify(politica));
+      v.muda(p);
+      for (const c of CASOS) {
+        const { viaveis } = avaliar(base, p, c.r);
+        assert.equal(viaveis[0] && viaveis[0].id, c.esperado,
+          `âncora "${c.nome}" muda de vencedor com ${v.rotulo}: margem frágil`);
+      }
+    }
+  });
+});
+
+describe("casos adversariais — pares em disputa real", () => {
+  /**
+   * Cenários em que dois bancos são defensáveis. O contrato aqui é o PAR no
+   * topo, não a ordem — a ordem é empate técnico e a UI diz isso ao usuário.
+   */
+  const PARES = [
+    { nome: "checkout de e-commerce", topo: ["cockroach", "postgres"],
+      r: { atomicidade:"multi", invariantes:"banco", skew:"nao", perda:"zero", particao:"errar",
+           leitura:"forte", acesso:"adhoc", formato:"tabular", escala:"crescente", operacao:"gerenciado" } }
+  ];
+  for (const c of PARES) {
+    test(c.nome, () => {
+      const { viaveis } = avaliar(base, politica, c.r);
+      assert.deepEqual(viaveis.slice(0, 2).map(v => v.id).sort(), [...c.topo].sort(),
+        `topo obtido: ${viaveis.slice(0, 3).map(v => v.id + ":" + v.pontos).join(", ")}`);
+    });
+  }
+});
+
+describe("por que venceu", () => {
+  test("lista exigências que eliminaram candidatos e vantagens sobre o vice", () => {
+    const res = avaliar(base, politica, CASOS[0].r); // liquidação → postgres
+    const razoes = porQueVenceu(politica, res);
+    assert.ok(razoes.length > 0, "vencedor sem nenhuma razão positiva");
+    const exigencias = razoes.filter(r => r.tipo === "exigencia");
+    assert.ok(exigencias.length > 0, "nenhuma exigência eliminatória listada");
+    assert.ok(exigencias.every(r => r.titulo && r.eliminados.length > 0));
+    for (const r of razoes.filter(x => x.tipo === "vantagem")) {
+      assert.equal(r.sobre, res.viaveis[1].nome);
+      assert.ok(r.motivo.length > 10);
+    }
+  });
+
+  test("sem vencedor, sem razões", () => {
+    // efêmero + integridade no banco elimina todo mundo
+    const res = avaliar(base, politica, { formato: "efemero", invariantes: "banco" });
+    assert.equal(res.viaveis.length, 0);
+    assert.deepEqual(porQueVenceu(politica, res), []);
   });
 });
 

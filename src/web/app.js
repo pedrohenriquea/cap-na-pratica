@@ -1,4 +1,4 @@
-import { avaliar, sensibilidade, consolidar } from "../motor/motor.js";
+import { avaliar, sensibilidade, consolidar, porQueVenceu } from "../motor/motor.js";
 
 const el = id => document.getElementById(id);
 const NS = "http://www.w3.org/2000/svg";
@@ -133,9 +133,15 @@ function pintar(res, sens) {
       'significa que o sistema tem <em>dois</em> conjuntos de requisitos diferentes — separe os agregados ' +
       'e rode a decisão para cada um.</p>';
   }
+  const razoes = porQueVenceu(POLITICA, res);
   res.viaveis.slice(0, 3).forEach((b, i) => {
     const art = document.createElement("article");
     art.className = "pos";
+    const pros = i === 0
+      ? razoes.map(r => r.tipo === "exigencia"
+          ? `<li class="pro">cumpre «${r.titulo.replace(/\?$/, "")}» — exigência que eliminou ${r.eliminados.join(", ")}</li>`
+          : `<li class="pro">evita a perda do ${r.sobre}: «${r.motivo}» (−${r.custo} para ele)</li>`).join("")
+      : "";
     const perdas = b.perdas.length
       ? b.perdas.map(p => `<li class="contra"><b>−${p.custo}</b> ${p.motivo}</li>`).join("")
       : '<li class="pleno">atende a tudo que você exigiu, sem ressalva de requisito</li>';
@@ -145,7 +151,7 @@ function pintar(res, sens) {
     art.innerHTML =
       `<div class="pos-rank">${i + 1}</div>` +
       `<div><h3>${b.nome} <span class="versao">${b.versaoAvaliada}</span></h3>` +
-      `<p class="pos-fam">${b.familia}</p><ul class="pos-razoes">${perdas}</ul>${avisos}</div>` +
+      `<p class="pos-fam">${b.familia}</p><ul class="pos-razoes">${pros}${perdas}</ul>${avisos}</div>` +
       `<div class="pos-med"><b>${b.pontos}</b>de 100</div>`;
     el("ranking").appendChild(art);
   });
@@ -230,6 +236,13 @@ function montarADR(res, sens) {
     L.push("Nenhum candidato atende a todos os requisitos declarados. Separar os agregados e decidir por agregado.");
   } else {
     L.push(`Adotar **${top.nome}** (${top.familia}, avaliado na versão ${top.versaoAvaliada}) — ${top.pontos}/100.`);
+    const razoes = porQueVenceu(POLITICA, res);
+    if (razoes.length) {
+      L.push("", "O que pesou a favor:", "");
+      razoes.forEach(r => L.push(r.tipo === "exigencia"
+        ? `- Cumpre «${r.titulo.replace(/\?$/, "")}», exigência que eliminou ${r.eliminados.join(", ")}.`
+        : `- Evita a perda do ${r.sobre}: ${r.motivo}.`));
+    }
     if (sens.apertado) {
       L.push("", `> Empate técnico com ${res.viaveis[1].nome} (${sens.margem} ponto(s)). ` +
         "O critério de desempate foi a experiência do time, não a pontuação.");
