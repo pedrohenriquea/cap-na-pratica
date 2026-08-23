@@ -1,4 +1,4 @@
-import { avaliar, sensibilidade } from "../motor/motor.js";
+import { avaliar, sensibilidade, consolidar } from "../motor/motor.js";
 
 const el = id => document.getElementById(id);
 const NS = "http://www.w3.org/2000/svg";
@@ -7,6 +7,7 @@ const py = v => 86 - v * 76;
 
 let BASE, POLITICA;
 const respostas = {};
+const agregados = []; // decisões já guardadas para consolidação poliglota
 
 /* ─────────── carga ─────────── */
 try {
@@ -29,13 +30,14 @@ POLITICA.perguntas.forEach((q, i) => {
   const bloco = document.createElement("fieldset");
   bloco.className = "q";
 
-  const cab = document.createElement("div");
+  // <legend> só rotula o grupo para leitor de tela se for filho direto do <fieldset>
+  const cab = document.createElement("legend");
   cab.className = "q-cab";
   cab.innerHTML =
     '<span class="q-num">' + String(i + 1).padStart(2, "0") + "</span>" +
-    '<legend class="q-tit">' + q.titulo +
+    '<span class="q-tit">' + q.titulo +
     (q.termo ? ' <span class="q-termo" title="o nome técnico disso, para procurar depois">' + q.termo + "</span>" : "") +
-    "</legend>";
+    "</span>";
   bloco.appendChild(cab);
 
   if (q.ajuda) {
@@ -171,7 +173,33 @@ function pintar(res, sens) {
   el("blocoInvestigar").hidden = !sens.investigar.length;
   el("listaInvestigar").innerHTML = sens.investigar.map(t => "<li>" + t + "</li>").join("");
 
+  pintarConsolidacao();
+
   el("adr").textContent = montarADR(res, sens);
+}
+
+/* ─────────── consolidação poliglota ─────────── */
+const nomeBanco = id => (BASE.bancos.find(b => b.id === id) || { nome: id }).nome;
+
+function pintarAgregados() {
+  el("painelAgregados").hidden = !agregados.length;
+  el("listaAgregados").innerHTML = agregados.map(a => {
+    const v = avaliar(BASE, POLITICA, a.respostas).viaveis[0];
+    return "<li><b>" + a.nome + "</b> — " + (v ? v.nome + " (" + v.pontos + ")" : "nenhum viável") + "</li>";
+  }).join("");
+}
+
+function pintarConsolidacao() {
+  const bloco = el("consolidacao");
+  bloco.hidden = !agregados.length;
+  if (!agregados.length) return;
+  const nomeAtual = el("nomeAgregado").value.trim() || "este agregado";
+  const c = consolidar(BASE, POLITICA, [...agregados, { nome: nomeAtual, respostas }]);
+  el("consolidacaoCorpo").innerHTML =
+    "<ul>" + c.decisoes.map(d =>
+      "<li><b>" + d.agregado + "</b> — " +
+      (d.melhor ? nomeBanco(d.melhor) + " (" + d.pontos + ")" : "nenhum viável") + "</li>").join("") +
+    '</ul><p class="veredito">' + c.recomendacao + "</p>";
 }
 
 /* ─────────── ADR ─────────── */
@@ -249,12 +277,27 @@ el("btnCopiar").addEventListener("click", async e => {
   setTimeout(() => { e.target.textContent = "Copiar ADR"; }, 1800);
 });
 
-el("btnReset").addEventListener("click", () => {
+function limpar() {
   el("form").reset();
   Object.keys(respostas).forEach(k => delete respostas[k]);
   el("alvo").setAttribute("opacity", "0");
   render();
   window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+el("btnReset").addEventListener("click", () => {
+  agregados.length = 0;
+  el("nomeAgregado").value = "";
+  pintarAgregados();
+  limpar();
+});
+
+el("btnGuardar").addEventListener("click", () => {
+  const nome = el("nomeAgregado").value.trim() || "agregado " + (agregados.length + 1);
+  agregados.push({ nome, respostas: { ...respostas } });
+  el("nomeAgregado").value = "";
+  pintarAgregados();
+  limpar(); // guarda a decisão atual e reabre o questionário para o próximo agregado
 });
 
 render();

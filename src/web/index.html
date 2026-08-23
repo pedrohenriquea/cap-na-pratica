@@ -184,6 +184,22 @@ pre.md{
 .painel-sec li ul{margin:0;padding-left:14px;gap:3px}
 .painel-sec li li{font-family:var(--dado);font-size:12.5px;color:var(--tinta-45)}
 .rodape-versao{font-family:var(--dado);font-size:11px;color:var(--tinta-45);margin-top:6px}
+
+/* --- v3: legend válido, nota CAP, consolidação poliglota --- */
+legend.q-cab{padding:0}
+.painel-nota{margin:14px 0 0;padding-top:12px;border-top:1px solid var(--linha)}
+.painel-nota summary{font-family:var(--dado);font-size:12px;color:var(--verdete);cursor:pointer;letter-spacing:.02em}
+.painel-nota p{font-size:13px;color:var(--tinta-70);margin:10px 0 0}
+.painel-agregados{margin-top:16px}
+.painel-agregados ul{margin:0;padding:0;list-style:none;display:grid;gap:6px;font-size:13px;color:var(--tinta-70)}
+.painel-agregados b{color:var(--tinta);font-weight:600}
+.poli-form{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 4px}
+.poli-form input{font-family:var(--dado);font-size:13px;padding:9px 12px;border:1px solid var(--linha-forte);background:#fff;color:var(--tinta);flex:1;min-width:200px}
+.poli-form input:focus-visible{outline:2px solid var(--verdete);outline-offset:1px}
+#consolidacao{margin-top:16px;padding-top:14px;border-top:1px solid var(--linha)}
+#consolidacao ul{margin:0 0 12px}
+#consolidacao .veredito{font-size:15px;color:var(--tinta);margin:0;max-width:64ch}
+.consol-tit{color:var(--verdete)}
 </style>
 </head>
 <body>
@@ -191,7 +207,7 @@ pre.md{
   <div class="env">
     <p class="sobrancelha">Escolha de banco de dados</p>
     <h1>Qual banco, e <em>por quê</em>.</h1>
-    <p class="lede">Nove perguntas sobre <b>o que você está construindo</b> — nenhuma sobre banco de dados. Não precisa saber a resposta técnica: cada pergunta vem com um exemplo. No fim sai um ranking, o motivo de cada descarte e um <b>registro de decisão pronto para colar no repositório</b>. Nada sai do seu navegador.</p>
+    <p class="lede">Dez perguntas sobre <b>o que você está construindo</b> — nenhuma sobre banco de dados. Não precisa saber a resposta técnica: cada pergunta vem com um exemplo. No fim sai um ranking, o motivo de cada descarte e um <b>registro de decisão pronto para colar no repositório</b>. Nada sai do seu navegador.</p>
   </div>
 </header>
 
@@ -199,7 +215,7 @@ pre.md{
   <div class="trabalho">
 
     <main>
-      <p class="progresso"><span id="contador">0 de 9 respondidas</span><span class="barra"><i id="barraFill"></i></span></p>
+      <p class="progresso"><span id="contador">0 de 10 respondidas</span><span class="barra"><i id="barraFill"></i></span></p>
       <form id="form"></form>
     </main>
 
@@ -227,6 +243,15 @@ pre.md{
           <span><i class="chave-cand"></i>candidato vivo</span>
           <span><i class="chave-fora"></i>eliminado</span>
         </p>
+        <details class="painel-nota">
+          <summary>Já ouviu falar do teorema CAP?</summary>
+          <p>O CAP diz que, quando a rede parte as cópias do banco, é preciso escolher: continuar disponível (A) ou responder só dado consistente (C). E ele para aí — partição é evento raro. O PACELC, usado neste gráfico, acrescenta a pergunta do dia a dia: sem falha nenhuma (<em>else</em>), o banco prioriza latência (L) ou consistência (C)?</p>
+          <p>Rigor: o teorema fala de sistemas com várias cópias. Um banco de uma máquina só (PostgreSQL, MySQL) entra aqui por convenção — isolado pela rede, ele simplesmente fica indisponível, que é o comportamento do lado PC.</p>
+        </details>
+      </div>
+      <div class="painel-cx painel-agregados" id="painelAgregados" hidden>
+        <p class="painel-tit">Agregados guardados</p>
+        <ul id="listaAgregados"></ul>
       </div>
     </aside>
 
@@ -257,7 +282,7 @@ pre.md{
 
     <div class="painel-sec h-sens" id="blocoSens" hidden>
       <h4>O que está segurando este resultado</h4>
-      <p>Das nove respostas, só estas mudam o vencedor se forem diferentes. As outras não importam para o seu caso.</p>
+      <p>Das suas respostas, só estas mudam o vencedor se forem diferentes. As outras não importam para o seu caso.</p>
       <ul id="listaSens"></ul>
     </div>
     <div class="painel-sec h-sens" id="sensRobusto" hidden>
@@ -269,6 +294,19 @@ pre.md{
       <h4>Descubra isto antes de decidir</h4>
       <p>Você respondeu com incerteza, e a resposta certa mudaria a decisão. Vale a pesquisa.</p>
       <ul id="listaInvestigar"></ul>
+    </div>
+
+    <div class="painel-sec" id="blocoPoliglota">
+      <h4>Mais de um tipo de dado?</h4>
+      <p>Se partes do sistema têm requisitos diferentes — o pedido e o catálogo, por exemplo —, decida uma de cada vez: dê um nome a este conjunto, guarde, e responda de novo para o próximo. No fim a ferramenta diz se um banco só atende a todos ou se vale especializar.</p>
+      <div class="poli-form">
+        <input id="nomeAgregado" aria-label="nome deste agregado" placeholder="nome deste agregado (ex.: pedidos)">
+        <button class="acao fantasma" id="btnGuardar" type="button">Guardar e responder outro</button>
+      </div>
+      <div id="consolidacao" hidden>
+        <h4 class="consol-tit">Um banco para tudo, ou um para cada?</h4>
+        <div id="consolidacaoCorpo"></div>
+      </div>
     </div>
 
     <div class="adr">

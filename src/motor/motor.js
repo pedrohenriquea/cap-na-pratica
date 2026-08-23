@@ -62,6 +62,7 @@ export function avaliar(base, politica, respostas) {
       const escolha = respostas[q.id];
       if (!escolha) continue;
       const o = q.opcoes.find(x => x.id === escolha);
+      if (!o) throw new Error(`resposta inválida para ${q.id}: ${escolha}`);
       for (const req of o.requisitos || []) {
         if (atende(req, b.caps, escalas)) continue;
         const registro = {
@@ -71,6 +72,7 @@ export function avaliar(base, politica, respostas) {
         };
         if (req.sev === "bloqueante") { bloqueios.push(registro); continue; }
         const custo = severidades[req.sev];
+        if (typeof custo !== "number") throw new Error(`severidade desconhecida: ${req.sev}`);
         pontos -= custo;
         perdas.push({ ...registro, severidade: req.sev, custo });
       }
@@ -185,6 +187,7 @@ export function consolidar(base, politica, agregados) {
   }, 0);
 
   const unico = [...comuns].sort((a, b) => somaPontos(b) - somaPontos(a))[0] || null;
+  const nomeDe = id => (base.bancos.find(b => b.id === id) || { nome: id }).nome;
   const melhorPorAgregado = decisoes.map(d => ({
     agregado: d.agregado,
     melhor: d.viaveis[0] ? d.viaveis[0].id : null,
@@ -200,7 +203,7 @@ export function consolidar(base, politica, agregados) {
     recomendacao: !unico
       ? "nenhum banco atende a todos os agregados: persistência poliglota é obrigatória aqui"
       : ganhoEspecializando <= 15
-        ? `use ${unico} para tudo: especializar renderia pouco e custa mais um sistema para operar`
+        ? `use ${nomeDe(unico)} para tudo: especializar renderia pouco e custa mais um sistema para operar`
         : `especializar vale a pena: o ganho supera o custo de operar mais de um banco`
   };
 }

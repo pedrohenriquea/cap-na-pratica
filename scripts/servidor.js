@@ -4,8 +4,11 @@
 import { createServer } from "node:http";
 import { readFile } from "node:fs/promises";
 import { extname, join, normalize } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const RAIZ = new URL("..", import.meta.url).pathname;
+// fileURLToPath, não .pathname: no Windows o pathname vem como /E:/... e o
+// join produz um caminho inválido — todo request respondia 404.
+const RAIZ = fileURLToPath(new URL("..", import.meta.url));
 const PORTA = process.env.PORTA || 5173;
 const TIPOS = {
   ".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8",

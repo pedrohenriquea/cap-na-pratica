@@ -1,6 +1,6 @@
 # Seletor de banco de dados
 
-Nove perguntas sobre o que você está construindo — nenhuma sobre banco de
+Dez perguntas sobre o que você está construindo — nenhuma sobre banco de
 dados. Devolve um ranking, a trilha de como cada ponto foi perdido, quais das
 suas respostas realmente seguram o resultado, e um ADR pronto para o
 repositório.
@@ -11,7 +11,7 @@ Zero dependências. Node só para servir os arquivos e rodar os testes.
 
 ```bash
 npm start     # http://localhost:5173
-npm test      # 20 testes: 10 casos-âncora + invariantes do motor
+npm test      # 24 testes: 10 casos-âncora + invariantes do motor e dos dados
 ```
 
 Não abra `src/web/index.html` direto pelo Explorer. O navegador bloqueia
@@ -37,7 +37,25 @@ scripts/
 O mesmo `motor.js` roda nos testes e no navegador. Não existe uma segunda
 implementação para manter em sincronia.
 
-## As quatro decisões que sustentam o resultado
+## Base teórica: CAP, na versão que decide
+
+O CAP clássico responde uma pergunta só: *com a rede partida entre as cópias,
+sacrificar disponibilidade ou consistência?* Partição é evento raro — e a
+classificação binária CP/AP esconde que MongoDB, Cassandra e DynamoDB mudam
+de lado por configuração de operação.
+
+Por isso o motor usa PACELC (Abadi, 2012): a pergunta do CAP durante a falha
+(**PA/PC**, alimentada pela pergunta sobre falha de rede) mais a escolha que
+o banco faz o dia inteiro em operação normal — latência ou consistência
+(**EL/EC**, alimentada pela pergunta de read-your-writes). Os dois eixos são
+contínuos (`p`/`e` em `bancos.json`), as respostas viram um alvo, e a
+distância de cada banco até o alvo custa até 25 pontos.
+
+De propósito, PACELC é só uma fatia da nota: o teorema não diz nada sobre
+transação, integridade, modelo de consulta nem custo operacional — e é isso
+que decide a maioria dos casos reais.
+
+## As decisões que sustentam o resultado
 
 **Fato e política em arquivos separados.** `bancos.json` diz o que cada banco
 faz — verificável, com a versão avaliada declarada, porque a resposta certa
@@ -60,6 +78,13 @@ capacidades do Postgres mais séries temporais; num modelo de capacidades, o
 superconjunto vence sempre — e venceu um CRUD comum nos testes. `derivaDe` +
 `justificaSe` fazem a extensão só entrar quando a necessidade que ela resolve
 está declarada. Vale para PostGIS, pgvector, Citus.
+
+**Camada não vence a fonte da verdade.** Redis e Elasticsearch declaram
+`fonteVerdade: false`. Quem responde que o dado não dá para reconstruir da
+origem (perda de no máximo alguns segundos) os penaliza — sem isso, o
+Elasticsearch ganhava o catálogo de produtos do MongoDB: ótimo índice,
+péssimo dono do dado. Quando o dado é reprocessável, a penalidade some, e é
+por isso que a busca do site continua sendo dele.
 
 ## Como mexer
 

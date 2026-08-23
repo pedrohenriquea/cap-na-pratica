@@ -14,35 +14,35 @@ const politica = ler("../../dados/perguntas.json");
  */
 const CASOS = [
   { nome: "liquidação financeira", esperado: "postgres",
-    r: { atomicidade:"multi", invariantes:"banco", skew:"sim", perda:"zero", leitura:"forte",
-         acesso:"adhoc", formato:"tabular", escala:"vertical", operacao:"minimo" } },
+    r: { atomicidade:"multi", invariantes:"banco", skew:"sim", perda:"zero", particao:"errar",
+         leitura:"forte", acesso:"adhoc", formato:"tabular", escala:"vertical", operacao:"minimo" } },
   { nome: "catálogo de produtos", esperado: "mongodb",
-    r: { atomicidade:"agregado", invariantes:"app", skew:"nao", perda:"segundos", leitura:"lag",
-         acesso:"chave", formato:"documento", escala:"crescente", operacao:"gerenciado" } },
+    r: { atomicidade:"agregado", invariantes:"app", skew:"nao", perda:"segundos", particao:"parar",
+         leitura:"lag", acesso:"chave", formato:"documento", escala:"crescente", operacao:"gerenciado" } },
   { nome: "telemetria de dispositivos", esperado: "cassandra",
-    r: { atomicidade:"agregado", invariantes:"app", skew:"nao", perda:"reprocessa", leitura:"eventual",
-         acesso:"chave", formato:"serie", escala:"horizontal", operacao:"experiente" } },
+    r: { atomicidade:"agregado", invariantes:"app", skew:"nao", perda:"reprocessa", particao:"parar",
+         leitura:"eventual", acesso:"chave", formato:"serie", escala:"horizontal", operacao:"experiente" } },
   { nome: "busca do site", esperado: "elastic",
-    r: { atomicidade:"agregado", invariantes:"app", skew:"nao", perda:"reprocessa", leitura:"eventual",
-         acesso:"texto", formato:"documento", escala:"crescente", operacao:"gerenciado" } },
+    r: { atomicidade:"agregado", invariantes:"app", skew:"nao", perda:"reprocessa", particao:"parar",
+         leitura:"eventual", acesso:"texto", formato:"documento", escala:"crescente", operacao:"gerenciado" } },
   { nome: "sessão e cache", esperado: "redis",
-    r: { atomicidade:"agregado", invariantes:"app", skew:"nao", perda:"reprocessa", leitura:"eventual",
-         acesso:"chave", formato:"efemero", escala:"crescente", operacao:"experiente" } },
+    r: { atomicidade:"agregado", invariantes:"app", skew:"nao", perda:"reprocessa", particao:"parar",
+         leitura:"eventual", acesso:"chave", formato:"efemero", escala:"crescente", operacao:"experiente" } },
   { nome: "quadro societário", esperado: "neo4j",
-    r: { atomicidade:"agregado", invariantes:"misto", skew:"nao", perda:"segundos", leitura:"lag",
-         acesso:"grafo", formato:"documento", escala:"vertical", operacao:"experiente" } },
+    r: { atomicidade:"agregado", invariantes:"misto", skew:"nao", perda:"segundos", particao:"tanto",
+         leitura:"lag", acesso:"grafo", formato:"documento", escala:"vertical", operacao:"experiente" } },
   { nome: "métricas internas", esperado: "timescale",
-    r: { atomicidade:"agregado", invariantes:"app", skew:"nao", perda:"segundos", leitura:"lag",
-         acesso:"chave", formato:"serie", escala:"vertical", operacao:"experiente" } },
+    r: { atomicidade:"agregado", invariantes:"app", skew:"nao", perda:"segundos", particao:"tanto",
+         leitura:"lag", acesso:"chave", formato:"serie", escala:"vertical", operacao:"experiente" } },
   { nome: "carrinho global de e-commerce", esperado: "dynamodb",
-    r: { atomicidade:"agregado", invariantes:"app", skew:"nao", perda:"segundos", leitura:"lag",
-         acesso:"chave", formato:"efemero", escala:"horizontal", operacao:"gerenciado" } },
+    r: { atomicidade:"agregado", invariantes:"app", skew:"nao", perda:"segundos", particao:"parar",
+         leitura:"lag", acesso:"chave", formato:"efemero", escala:"horizontal", operacao:"gerenciado" } },
   { nome: "CRUD interno simples", esperado: "postgres",
-    r: { atomicidade:"multi", invariantes:"banco", skew:"nao", perda:"segundos", leitura:"forte",
-         acesso:"adhoc", formato:"tabular", escala:"vertical", operacao:"minimo" } },
+    r: { atomicidade:"multi", invariantes:"banco", skew:"nao", perda:"segundos", particao:"tanto",
+         leitura:"forte", acesso:"adhoc", formato:"tabular", escala:"vertical", operacao:"minimo" } },
   { nome: "ledger multirregião", esperado: "cockroach",
-    r: { atomicidade:"multi", invariantes:"banco", skew:"sim", perda:"zero", leitura:"forte",
-         acesso:"adhoc", formato:"tabular", escala:"horizontal", operacao:"gerenciado" } }
+    r: { atomicidade:"multi", invariantes:"banco", skew:"sim", perda:"zero", particao:"errar",
+         leitura:"forte", acesso:"adhoc", formato:"tabular", escala:"horizontal", operacao:"gerenciado" } }
 ];
 
 describe("casos-âncora", () => {
@@ -98,6 +98,34 @@ describe("invariantes do motor", () => {
     assert.equal(inviaveis.length, 0);
     assert.ok(viaveis.every(v => v.pontos <= 100));
   });
+
+  test("todo valor de capacidade com escala pertence à escala", () => {
+    for (const b of base.bancos)
+      for (const [cap, escala] of Object.entries(base.escalas))
+        if (b.caps[cap] !== undefined)
+          assert.ok(escala.includes(b.caps[cap]),
+            `${b.id}: ${cap}="${b.caps[cap]}" fora da escala [${escala}]`);
+  });
+
+  test("p e e de todo banco ficam entre 0 e 1", () => {
+    for (const b of base.bancos) {
+      assert.ok(b.caps.p >= 0 && b.caps.p <= 1, `${b.id}: p=${b.caps.p}`);
+      assert.ok(b.caps.e >= 0 && b.caps.e <= 1, `${b.id}: e=${b.caps.e}`);
+    }
+  });
+
+  test("toda severidade usada existe na tabela de severidades", () => {
+    for (const q of politica.perguntas)
+      for (const o of q.opcoes)
+        for (const r of o.requisitos || [])
+          assert.ok(r.sev === "bloqueante" || typeof politica.severidades[r.sev] === "number",
+            `severidade "${r.sev}" em ${q.id}/${o.id} não tem custo definido`);
+  });
+
+  test("resposta com id inexistente é erro, não silêncio", () => {
+    assert.throws(() => avaliar(base, politica, { atomicidade: "nao-existe" }),
+      /resposta inválida/);
+  });
 });
 
 describe("análise de sensibilidade", () => {
@@ -128,7 +156,7 @@ describe("consolidação poliglota", () => {
       { nome: "b", respostas: CASOS[8].r }
     ]);
     assert.equal(c.candidatoUnico, "postgres");
-    assert.match(c.recomendacao, /use postgres/);
+    assert.match(c.recomendacao, /use PostgreSQL/);
   });
 
   test("reconhece quando nenhum banco atende a todos os agregados", () => {

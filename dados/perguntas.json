@@ -160,9 +160,6 @@
           "id": "zero",
           "texto": "Não. Se eu avisei o usuário que salvou, tem que estar salvo",
           "exemplo": "pagamento, lançamento contábil, contrato assinado",
-          "pacelc": {
-            "p": 0.95
-          },
           "requisitos": [
             {
               "cap": "durabilidadeSincrona",
@@ -176,17 +173,54 @@
         {
           "id": "segundos",
           "texto": "Alguns segundos, tudo bem",
-          "pacelc": {
-            "p": 0.6
-          },
-          "requisitos": []
+          "requisitos": [
+            {
+              "cap": "fonteVerdade",
+              "op": "eq",
+              "valor": true,
+              "sev": "grave",
+              "motivo": "não é desenhado para guardar o dado original: o que só existir nele não tem de onde ser reconstruído"
+            }
+          ]
         },
         {
           "id": "reprocessa",
           "texto": "Pode perder. Quem mandou envia de novo",
           "exemplo": "log, métrica, evento de fila que dá para reprocessar",
+          "requisitos": []
+        }
+      ]
+    },
+    {
+      "id": "particao",
+      "termo": "teorema CAP",
+      "titulo": "Se a rede entre as cópias do banco falhar, o que é pior?",
+      "ajuda": "Esta é a pergunta do teorema CAP. Com a rede partida, não existe ter os dois: ou o sistema recusa operações até as cópias se reencontrarem, ou continua no ar aceitando responder com dado possivelmente desatualizado.",
+      "opcoes": [
+        {
+          "id": "errar",
+          "texto": "Responder errado. Prefiro que ele recuse e espere a rede voltar",
+          "exemplo": "saldo, estoque, qualquer número que não pode mentir",
           "pacelc": {
-            "p": 0.2
+            "p": 0.95
+          },
+          "requisitos": []
+        },
+        {
+          "id": "parar",
+          "texto": "Ficar fora do ar. Prefiro responder mesmo que o dado esteja velho",
+          "exemplo": "feed, catálogo, carrinho — melhor mostrar algo do que uma tela de erro",
+          "pacelc": {
+            "p": 0.15
+          },
+          "requisitos": []
+        },
+        {
+          "id": "tanto",
+          "texto": "Tanto faz: aqui a rede quase não parte, e a falha seria curta",
+          "exemplo": "sistema interno rodando num único datacenter",
+          "pacelc": {
+            "p": 0.5
           },
           "requisitos": []
         }
