@@ -188,6 +188,12 @@ pre.md{
 /* --- v3: legend válido, nota CAP, consolidação poliglota --- */
 .pos-razoes li.pro{padding-left:16px;color:var(--tinta-70)}
 .pos-razoes li.pro::before{content:"✓";position:absolute;left:0;color:var(--verdete)}
+.ponto-nome{font-weight:600}
+.mapa-bancos{margin:12px 0 0;padding:12px 0 0;border-top:1px solid var(--linha);list-style:none;display:grid;grid-template-columns:1fr 1fr;gap:4px 14px;font-family:var(--dado);font-size:11px;color:var(--tinta-70)}
+.mapa-bancos li{display:flex;gap:7px;align-items:baseline;transition:opacity .3s}
+.mapa-bancos i{font-style:normal;color:var(--verdete);min-width:12px;text-align:right;font-weight:600}
+.mapa-bancos li.fora-plano{opacity:.35;text-decoration:line-through}
+.mapa-bancos li.lider-plano{color:var(--tinta);font-weight:600}
 legend.q-cab{padding:0}
 .painel-nota{margin:14px 0 0;padding-top:12px;border-top:1px solid var(--linha)}
 .painel-nota summary{font-family:var(--dado);font-size:12px;color:var(--verdete);cursor:pointer;letter-spacing:.02em}
@@ -224,7 +230,7 @@ legend.q-cab{padding:0}
     <aside class="painel">
       <div class="painel-cx">
         <p class="painel-tit">Plano PACELC</p>
-        <p class="painel-sub">O losango amarelo é o que o seu caso pede. Os pontos são como cada banco se comporta por padrão. Quanto mais perto, melhor o encaixe.</p>
+        <p class="painel-sub">O losango amarelo é o que o seu caso pede. Cada número é um banco — os nomes estão na lista logo abaixo. Quanto mais perto do losango, melhor o encaixe.</p>
         <svg class="plano" viewBox="0 0 100 100" role="img" aria-labelledby="planoTit">
           <title id="planoTit">Posição dos bancos candidatos no plano PACELC</title>
           <rect x="14" y="10" width="80" height="76" fill="#fff" stroke="var(--linha)"/>
@@ -245,6 +251,7 @@ legend.q-cab{padding:0}
           <span><i class="chave-cand"></i>candidato vivo</span>
           <span><i class="chave-fora"></i>eliminado</span>
         </p>
+        <ol class="mapa-bancos" id="mapaBancos"></ol>
         <details class="painel-nota">
           <summary>Já ouviu falar do teorema CAP?</summary>
           <p>O CAP diz que, quando a rede parte as cópias do banco, é preciso escolher: continuar disponível (A) ou responder só dado consistente (C). E ele para aí — partição é evento raro. O PACELC, usado neste gráfico, acrescenta a pergunta do dia a dia: sem falha nenhuma (<em>else</em>), o banco prioriza latência (L) ou consistência (C)?</p>

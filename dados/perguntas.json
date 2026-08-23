@@ -11,13 +11,13 @@
     {
       "id": "atomicidade",
       "termo": "atomicidade",
-      "titulo": "O que precisa ser salvo junto, tudo ou nada?",
-      "ajuda": "Se der erro no meio da gravação, o que não pode ficar salvo pela metade?",
+      "titulo": "Quando o sistema salva, quantos registros mudam de uma vez?",
+      "ajuda": "Pense na gravação mais importante do sistema. Se ela falhar no meio, nada pode ficar salvo pela metade — e garantir isso é fácil dentro de um registro, difícil entre vários.",
       "opcoes": [
         {
           "id": "agregado",
-          "texto": "É uma coisa só, mesmo tendo listas dentro",
-          "exemplo": "um pedido com os itens dele — salva junto, lê junto",
+          "texto": "Um só — mesmo que ele carregue uma lista dentro",
+          "exemplo": "o pedido com seus itens é um registro só: salva junto, lê junto",
           "requisitos": [
             {
               "cap": "transacao",
@@ -30,8 +30,8 @@
         },
         {
           "id": "multi",
-          "texto": "São várias coisas separadas que mudam ao mesmo tempo",
-          "exemplo": "tirar R$ 100 de uma conta e colocar em outra. As duas ou nenhuma.",
+          "texto": "Vários, separados — e ou salvam todos, ou nenhum",
+          "exemplo": "transferência: tira R$ 100 de uma conta e põe na outra. Parar no meio é inaceitável.",
           "requisitos": [
             {
               "cap": "transacao",
@@ -45,7 +45,7 @@
         {
           "id": "indefinido",
           "texto": "Ainda não sei — o desenho está mudando",
-          "exemplo": "na dúvida, ganha quem não te obriga a decidir agora",
+          "exemplo": "na dúvida, ganha o banco que não te obriga a decidir isso agora",
           "incerta": true,
           "requisitos": [
             {
@@ -62,13 +62,13 @@
     {
       "id": "invariantes",
       "termo": "integridade",
-      "titulo": "Se chegar um dado errado, quem barra?",
-      "ajuda": "Errado como: um pedido apontando para um cliente que não existe, ou dois cadastros com o mesmo CPF.",
+      "titulo": "Quem barra um dado inválido: o banco ou o seu código?",
+      "ajuda": "Inválido assim: dois cadastros com o mesmo CPF, ou um pedido apontando para um cliente que não existe.",
       "opcoes": [
         {
           "id": "banco",
-          "texto": "O banco. Ele recusa e a gravação falha ali mesmo",
-          "exemplo": "CPF repetido nem entra na tabela",
+          "texto": "O banco. A gravação inválida falha na hora, sem depender do código",
+          "exemplo": "CPF repetido nem chega a entrar na tabela",
           "requisitos": [
             {
               "cap": "unicidade",
@@ -88,13 +88,13 @@
         },
         {
           "id": "app",
-          "texto": "O código da aplicação. Se escapar, a gente corrige depois",
+          "texto": "O código da aplicação valida antes. Se escapar, corrigimos depois",
           "exemplo": "funciona quando dá para reconstruir o dado a partir da origem",
           "requisitos": []
         },
         {
           "id": "misto",
-          "texto": "Algumas o banco barra, o resto fica no código",
+          "texto": "O essencial o banco barra; o resto fica no código",
           "requisitos": [
             {
               "cap": "unicidade",
@@ -110,13 +110,13 @@
     {
       "id": "skew",
       "termo": "write skew",
-      "titulo": "Tem alguma regra que precisa olhar várias linhas ao mesmo tempo?",
-      "ajuda": "O caso clássico: “pelo menos um médico tem que estar de plantão”. Dois pedem folga no mesmo instante, cada um vê o outro de plantão, e os dois saem. Nenhuma linha estava errada sozinha — o conjunto ficou.",
+      "titulo": "Existe regra do tipo “no máximo N” ou “pelo menos um”, contando vários registros?",
+      "ajuda": "O caso clássico: “pelo menos um médico de plantão”. Dois pedem folga no mesmo segundo, cada um olha e vê o outro de plantão, os dois saem — a regra quebrou sem nenhum registro estar errado sozinho.",
       "opcoes": [
         {
           "id": "sim",
-          "texto": "Sim, existe uma regra desse tipo",
-          "exemplo": "no máximo 5 vagas; limite total de crédito somando todos os contratos do cliente",
+          "texto": "Sim, tem regra que conta ou soma vários registros",
+          "exemplo": "só 5 vagas na turma; limite de crédito somando todos os contratos do cliente",
           "requisitos": [
             {
               "cap": "isolamento",
@@ -129,7 +129,7 @@
         },
         {
           "id": "nao",
-          "texto": "Não. Cada regra olha só o próprio registro",
+          "texto": "Não. Cada regra confere só o próprio registro",
           "exemplo": "saldo não pode ficar negativo — dá para checar na própria linha",
           "requisitos": []
         },
@@ -154,11 +154,11 @@
       "id": "perda",
       "termo": "durabilidade",
       "titulo": "Se o banco cair agora, pode perder os últimos segundos de gravação?",
-      "ajuda": "Manter uma cópia sempre em dia deixa toda gravação mais lenta. Manter uma cópia atrasada é rápido, mas o que estava no caminho se perde.",
+      "ajuda": "Todo banco mantém cópias. Confirmar cada gravação na cópia antes de responder é seguro, porém mais lento; deixar a cópia se atualizar depois é rápido, mas o que estava no caminho se perde na queda.",
       "opcoes": [
         {
           "id": "zero",
-          "texto": "Não. Se eu avisei o usuário que salvou, tem que estar salvo",
+          "texto": "Não pode. Se o usuário viu “salvo”, tem que estar salvo",
           "exemplo": "pagamento, lançamento contábil, contrato assinado",
           "requisitos": [
             {
@@ -173,6 +173,7 @@
         {
           "id": "segundos",
           "texto": "Alguns segundos, tudo bem",
+          "exemplo": "comentário, curtida: chato de perder, fácil de refazer",
           "requisitos": [
             {
               "cap": "fonteVerdade",
@@ -185,7 +186,7 @@
         },
         {
           "id": "reprocessa",
-          "texto": "Pode perder. Quem mandou envia de novo",
+          "texto": "Pode perder. A origem envia de novo",
           "exemplo": "log, métrica, evento de fila que dá para reprocessar",
           "requisitos": []
         }
@@ -194,13 +195,13 @@
     {
       "id": "particao",
       "termo": "teorema CAP",
-      "titulo": "Se a rede entre as cópias do banco falhar, o que é pior?",
-      "ajuda": "Esta é a pergunta do teorema CAP. Com a rede partida, não existe ter os dois: ou o sistema recusa operações até as cópias se reencontrarem, ou continua no ar aceitando responder com dado possivelmente desatualizado.",
+      "titulo": "Se a rede entre as cópias do banco falhar, o sistema para ou segue no ar?",
+      "ajuda": "Esta é a pergunta do teorema CAP. Com as cópias sem se enxergar, não dá para ter os dois: ou o sistema recusa operações até a rede voltar, ou segue no ar sabendo que pode responder dado desatualizado.",
       "opcoes": [
         {
           "id": "errar",
-          "texto": "Responder errado. Prefiro que ele recuse e espere a rede voltar",
-          "exemplo": "saldo, estoque, qualquer número que não pode mentir",
+          "texto": "Para. Responder errado é pior que ficar fora do ar",
+          "exemplo": "saldo, estoque — número que não pode mentir",
           "pacelc": {
             "p": 0.95
           },
@@ -208,8 +209,8 @@
         },
         {
           "id": "parar",
-          "texto": "Ficar fora do ar. Prefiro responder mesmo que o dado esteja velho",
-          "exemplo": "feed, catálogo, carrinho — melhor mostrar algo do que uma tela de erro",
+          "texto": "Segue no ar. Ficar fora do ar é pior que dado velho",
+          "exemplo": "feed, catálogo, carrinho: melhor mostrar algo do que uma tela de erro",
           "pacelc": {
             "p": 0.15
           },
@@ -217,7 +218,7 @@
         },
         {
           "id": "tanto",
-          "texto": "Tanto faz: aqui a rede quase não parte, e a falha seria curta",
+          "texto": "Tanto faz — aqui a rede quase nunca parte, e a falha seria curta",
           "exemplo": "sistema interno rodando num único datacenter",
           "pacelc": {
             "p": 0.5
@@ -258,7 +259,7 @@
         },
         {
           "id": "lag",
-          "texto": "Uns segundos de atraso em telas de consulta é aceitável",
+          "texto": "Em telas de consulta, uns segundos de atraso são aceitáveis",
           "pacelc": {
             "e": 0.5
           },
@@ -278,7 +279,7 @@
     {
       "id": "acesso",
       "termo": "padrão de acesso",
-      "titulo": "Como você vai buscar esses dados depois?",
+      "titulo": "Como o sistema vai encontrar esse dado depois?",
       "ajuda": "Isso pesa mais na escolha do que o formato em que o dado é guardado.",
       "opcoes": [
         {
@@ -355,12 +356,12 @@
     {
       "id": "formato",
       "termo": "modelo de dados",
-      "titulo": "Como o dado é, na prática?",
+      "titulo": "Como esse dado se organiza?",
       "opcoes": [
         {
           "id": "tabular",
-          "texto": "Campos fixos, e as coisas se ligam entre si",
-          "exemplo": "cliente tem conta, conta tem contrato",
+          "texto": "Tabelas: campos fixos, registros apontando uns para os outros",
+          "exemplo": "cliente tem contas, conta tem contratos",
           "requisitos": [
             {
               "cap": "modelo",

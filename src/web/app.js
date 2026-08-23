@@ -1,9 +1,8 @@
 import { avaliar, sensibilidade, consolidar, porQueVenceu } from "../motor/motor.js";
+import { posicionarNumeros, px, py } from "./plano.js";
 
 const el = id => document.getElementById(id);
 const NS = "http://www.w3.org/2000/svg";
-const px = v => 14 + v * 80;
-const py = v => 86 - v * 76;
 
 let BASE, POLITICA;
 const respostas = {};
@@ -70,20 +69,27 @@ POLITICA.perguntas.forEach((q, i) => {
 });
 
 /* ─────────── plano PACELC ─────────── */
-BASE.bancos.forEach(b => {
+posicionarNumeros(BASE.bancos).forEach(r => {
   const g = document.createElementNS(NS, "g");
-  g.dataset.id = b.id;
+  g.dataset.id = r.id;
   const c = document.createElementNS(NS, "circle");
   c.setAttribute("class", "ponto");
-  c.setAttribute("cx", px(b.caps.p)); c.setAttribute("cy", py(b.caps.e));
+  c.setAttribute("cx", r.cx); c.setAttribute("cy", r.cy);
   c.setAttribute("r", "1.9");
   const t = document.createElementNS(NS, "text");
   t.setAttribute("class", "ponto-nome");
-  t.setAttribute("x", px(b.caps.p) + 3); t.setAttribute("y", py(b.caps.e) + 1.2);
-  t.textContent = b.nome.split(" /")[0];
-  if (px(b.caps.p) > 70) { t.setAttribute("x", px(b.caps.p) - 3); t.setAttribute("text-anchor", "end"); }
+  t.setAttribute("x", r.x); t.setAttribute("y", r.y);
+  if (r.anchor === "end") t.setAttribute("text-anchor", "end");
+  t.textContent = r.indice;
   g.append(c, t);
   el("pontos").appendChild(g);
+
+  const li = document.createElement("li");
+  li.dataset.id = r.id;
+  const i = document.createElement("i");
+  i.textContent = r.indice;
+  li.append(i, r.nome);
+  el("mapaBancos").appendChild(li);
 });
 
 /* ─────────── render ─────────── */
@@ -108,6 +114,10 @@ function render() {
     c.setAttribute("fill", fora ? "var(--linha-forte)" : "var(--verdete)");
     c.setAttribute("r", g.dataset.id === lider && feitas === total ? "3.2" : "1.9");
     g.setAttribute("opacity", fora ? ".4" : "1");
+  });
+  el("mapaBancos").querySelectorAll("li").forEach(li => {
+    li.classList.toggle("fora-plano", bloqueados.has(li.dataset.id));
+    li.classList.toggle("lider-plano", li.dataset.id === lider && feitas === total);
   });
 
   if (feitas < total) { el("resultado").hidden = true; return; }

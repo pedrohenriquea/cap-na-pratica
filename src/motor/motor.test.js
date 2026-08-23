@@ -2,6 +2,7 @@ import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { avaliar, sensibilidade, consolidar, porQueVenceu } from "./motor.js";
+import { posicionarNumeros } from "../web/plano.js";
 
 const ler = p => JSON.parse(readFileSync(new URL(p, import.meta.url), "utf-8"));
 const base = ler("../../dados/bancos.json");
@@ -209,6 +210,35 @@ describe("por que venceu", () => {
     const res = avaliar(base, politica, { formato: "efemero", invariantes: "banco" });
     assert.equal(res.viaveis.length, 0);
     assert.deepEqual(porQueVenceu(politica, res), []);
+  });
+});
+
+describe("plano PACELC legível", () => {
+  const rotulos = posicionarNumeros(base.bancos);
+
+  test("nenhum número sobrepõe outro número", () => {
+    for (let i = 0; i < rotulos.length; i++)
+      for (let j = i + 1; j < rotulos.length; j++) {
+        const a = rotulos[i].caixa, b = rotulos[j].caixa;
+        assert.ok(!(a.x1 < b.x2 && a.x2 > b.x1 && a.y1 < b.y2 && a.y2 > b.y1),
+          `números de ${rotulos[i].id} e ${rotulos[j].id} sobrepostos`);
+      }
+  });
+
+  test("nenhum número cobre o ponto de outro banco", () => {
+    for (const r of rotulos)
+      for (const p of rotulos) {
+        if (r.id === p.id) continue;
+        const c = r.caixa;
+        const cobre = c.x1 < p.cx + 1.9 && c.x2 > p.cx - 1.9 && c.y1 < p.cy + 1.9 && c.y2 > p.cy - 1.9;
+        assert.ok(!cobre, `número de ${r.id} cobre o ponto de ${p.id}`);
+      }
+  });
+
+  test("todo número fica dentro da área visível", () => {
+    for (const r of rotulos)
+      assert.ok(r.caixa.x1 >= 1 && r.caixa.x2 <= 99 && r.caixa.y1 >= 10 && r.caixa.y2 <= 92,
+        `número de ${r.id} fora da área: ${JSON.stringify(r.caixa)}`);
   });
 });
 
