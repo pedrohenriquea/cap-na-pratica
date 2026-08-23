@@ -1,0 +1,367 @@
+{
+  "versaoBase": "2026-08-23",
+  "escalas": {
+    "transacao": [
+      "nenhuma",
+      "documento",
+      "particao",
+      "global"
+    ],
+    "isolamento": [
+      "nenhum",
+      "read-committed",
+      "snapshot",
+      "serializavel"
+    ],
+    "adhoc": [
+      "nenhuma",
+      "limitada",
+      "completa"
+    ],
+    "busca": [
+      "nenhuma",
+      "basica",
+      "avancada"
+    ],
+    "grafo": [
+      "nenhuma",
+      "limitada",
+      "nativa"
+    ],
+    "serie": [
+      "nenhuma",
+      "limitada",
+      "nativa"
+    ],
+    "distribuicao": [
+      "nenhuma",
+      "manual",
+      "nativa"
+    ],
+    "leitura": [
+      "eventual",
+      "ajustavel",
+      "forte"
+    ],
+    "custoOp": [
+      "alto",
+      "medio",
+      "baixo"
+    ],
+    "arquitetura": [
+      "distribuida",
+      "monolitica"
+    ]
+  },
+  "bancos": [
+    {
+      "id": "postgres",
+      "nome": "PostgreSQL",
+      "familia": "Relacional · MVCC",
+      "versaoAvaliada": "16",
+      "caps": {
+        "transacao": "global",
+        "isolamento": "serializavel",
+        "unicidade": true,
+        "referencial": true,
+        "adhoc": "completa",
+        "busca": "basica",
+        "grafo": "limitada",
+        "serie": "limitada",
+        "distribuicao": "manual",
+        "leitura": "forte",
+        "durabilidadeSincrona": true,
+        "gerenciado": true,
+        "custoOp": "medio",
+        "efemeroOk": false,
+        "modelo": "relacional",
+        "p": 0.86,
+        "e": 0.95,
+        "arquitetura": "monolitica"
+      },
+      "ressalvas": {
+        "isolamento": "Serializable usa SSI: aborta a transação com 40001, exige retry na aplicação",
+        "grafo": "travessia via CTE recursiva degrada a partir de ~4 níveis",
+        "distribuicao": "particionamento entre máquinas fica por sua conta (Citus resolve, é outra peça)"
+      }
+    },
+    {
+      "id": "cockroach",
+      "nome": "CockroachDB",
+      "familia": "NewSQL distribuído",
+      "versaoAvaliada": "24",
+      "caps": {
+        "transacao": "global",
+        "isolamento": "serializavel",
+        "unicidade": true,
+        "referencial": true,
+        "adhoc": "completa",
+        "busca": "nenhuma",
+        "grafo": "limitada",
+        "serie": "limitada",
+        "distribuicao": "nativa",
+        "leitura": "forte",
+        "durabilidadeSincrona": true,
+        "gerenciado": true,
+        "custoOp": "medio",
+        "efemeroOk": false,
+        "modelo": "relacional",
+        "p": 0.95,
+        "e": 0.94,
+        "arquitetura": "distribuida"
+      },
+      "ressalvas": {
+        "leitura": "latência de escrita paga consenso entre réplicas mesmo sem contenção"
+      }
+    },
+    {
+      "id": "mysql",
+      "nome": "MySQL / MariaDB",
+      "familia": "Relacional",
+      "versaoAvaliada": "8 (InnoDB)",
+      "caps": {
+        "transacao": "global",
+        "isolamento": "serializavel",
+        "unicidade": true,
+        "referencial": true,
+        "adhoc": "completa",
+        "busca": "basica",
+        "grafo": "nenhuma",
+        "serie": "limitada",
+        "distribuicao": "manual",
+        "leitura": "forte",
+        "durabilidadeSincrona": true,
+        "gerenciado": true,
+        "custoOp": "medio",
+        "efemeroOk": false,
+        "modelo": "relacional",
+        "p": 0.8,
+        "e": 0.88,
+        "arquitetura": "monolitica"
+      },
+      "ressalvas": {
+        "isolamento": "Serializable é por bloqueio, não por detecção de conflito: derruba throughput sob contenção"
+      }
+    },
+    {
+      "id": "mongodb",
+      "nome": "MongoDB",
+      "familia": "Documento · replica set",
+      "versaoAvaliada": "7",
+      "caps": {
+        "transacao": "global",
+        "isolamento": "snapshot",
+        "unicidade": true,
+        "referencial": false,
+        "adhoc": "limitada",
+        "busca": "basica",
+        "grafo": "limitada",
+        "serie": "limitada",
+        "distribuicao": "nativa",
+        "leitura": "ajustavel",
+        "durabilidadeSincrona": true,
+        "gerenciado": true,
+        "custoOp": "medio",
+        "efemeroOk": false,
+        "modelo": "documento",
+        "p": 0.68,
+        "e": 0.78,
+        "arquitetura": "distribuida"
+      },
+      "ressalvas": {
+        "transacao": "transação multi-documento existe desde a 4.0, mas custa caro e vai contra o modelo",
+        "adhoc": "$lookup resolve casos simples; não substitui join no planejador",
+        "busca": "Atlas Search sobe para avançada, mas só no serviço gerenciado",
+        "leitura": "exige readConcern majority + writeConcern majority explícitos"
+      }
+    },
+    {
+      "id": "dynamodb",
+      "nome": "DynamoDB",
+      "familia": "Chave-valor gerenciado",
+      "versaoAvaliada": "serviço AWS",
+      "caps": {
+        "transacao": "global",
+        "isolamento": "read-committed",
+        "unicidade": false,
+        "referencial": false,
+        "adhoc": "limitada",
+        "busca": "nenhuma",
+        "grafo": "nenhuma",
+        "serie": "limitada",
+        "distribuicao": "nativa",
+        "leitura": "ajustavel",
+        "durabilidadeSincrona": true,
+        "gerenciado": true,
+        "custoOp": "baixo",
+        "efemeroOk": true,
+        "modelo": "kv",
+        "p": 0.36,
+        "e": 0.34,
+        "arquitetura": "distribuida"
+      },
+      "ressalvas": {
+        "transacao": "TransactWriteItems limita a 100 itens e não faz rollback parcial",
+        "adhoc": "consulta só pela chave ou por índice secundário criado de antemão",
+        "unicidade": "só a chave primária é única; qualquer outro campo não"
+      }
+    },
+    {
+      "id": "cassandra",
+      "nome": "Cassandra / ScyllaDB",
+      "familia": "Wide-column · sem primário",
+      "versaoAvaliada": "5 / 6",
+      "caps": {
+        "transacao": "particao",
+        "isolamento": "nenhum",
+        "unicidade": false,
+        "referencial": false,
+        "adhoc": "nenhuma",
+        "busca": "nenhuma",
+        "grafo": "nenhuma",
+        "serie": "nativa",
+        "distribuicao": "nativa",
+        "leitura": "ajustavel",
+        "durabilidadeSincrona": true,
+        "gerenciado": true,
+        "custoOp": "alto",
+        "efemeroOk": false,
+        "modelo": "wide",
+        "p": 0.16,
+        "e": 0.14,
+        "arquitetura": "distribuida"
+      },
+      "ressalvas": {
+        "adhoc": "a tabela é modelada a partir da consulta; consulta nova costuma significar tabela nova",
+        "unicidade": "LWT dá unicidade com custo de consenso por escrita"
+      }
+    },
+    {
+      "id": "redis",
+      "nome": "Redis",
+      "familia": "Em memória",
+      "versaoAvaliada": "7",
+      "caps": {
+        "transacao": "documento",
+        "isolamento": "nenhum",
+        "unicidade": false,
+        "referencial": false,
+        "adhoc": "nenhuma",
+        "busca": "nenhuma",
+        "grafo": "nenhuma",
+        "serie": "limitada",
+        "distribuicao": "nativa",
+        "leitura": "ajustavel",
+        "durabilidadeSincrona": false,
+        "gerenciado": true,
+        "custoOp": "baixo",
+        "efemeroOk": true,
+        "modelo": "kv",
+        "p": 0.22,
+        "e": 0.06,
+        "arquitetura": "distribuida"
+      },
+      "ressalvas": {
+        "transacao": "MULTI/EXEC não desfaz o que já executou; não é rollback",
+        "papel": "é camada, não fonte da verdade: pressupõe um banco de origem atrás"
+      }
+    },
+    {
+      "id": "neo4j",
+      "nome": "Neo4j",
+      "familia": "Grafo",
+      "versaoAvaliada": "5",
+      "caps": {
+        "transacao": "global",
+        "isolamento": "read-committed",
+        "unicidade": true,
+        "referencial": true,
+        "adhoc": "limitada",
+        "busca": "basica",
+        "grafo": "nativa",
+        "serie": "nenhuma",
+        "distribuicao": "manual",
+        "leitura": "forte",
+        "durabilidadeSincrona": true,
+        "gerenciado": true,
+        "custoOp": "alto",
+        "efemeroOk": false,
+        "modelo": "grafo",
+        "p": 0.78,
+        "e": 0.86,
+        "arquitetura": "monolitica"
+      },
+      "ressalvas": {
+        "isolamento": "read-committed por padrão; write skew exige lock explícito no Cypher",
+        "adhoc": "Cypher é completo para grafo, limitado para agregação tabular"
+      }
+    },
+    {
+      "id": "timescale",
+      "nome": "TimescaleDB",
+      "familia": "Série temporal sobre PostgreSQL",
+      "versaoAvaliada": "2.x",
+      "caps": {
+        "transacao": "global",
+        "isolamento": "serializavel",
+        "unicidade": true,
+        "referencial": true,
+        "adhoc": "completa",
+        "busca": "basica",
+        "grafo": "limitada",
+        "serie": "nativa",
+        "distribuicao": "manual",
+        "leitura": "forte",
+        "durabilidadeSincrona": true,
+        "gerenciado": true,
+        "custoOp": "medio",
+        "efemeroOk": false,
+        "modelo": "serie",
+        "p": 0.84,
+        "e": 0.9,
+        "arquitetura": "monolitica"
+      },
+      "ressalvas": {
+        "papel": "é extensão do Postgres: não conta como um segundo datastore no inventário"
+      },
+      "derivaDe": "postgres",
+      "justificaSe": {
+        "pergunta": "formato",
+        "opcoes": [
+          "serie"
+        ],
+        "motivoSemJustificativa": "é o PostgreSQL com uma extensão a mais; sem dado temporal, não há o que justifique mantê-la"
+      }
+    },
+    {
+      "id": "elastic",
+      "nome": "Elasticsearch / OpenSearch",
+      "familia": "Busca · índice invertido",
+      "versaoAvaliada": "8 / 2",
+      "caps": {
+        "transacao": "documento",
+        "isolamento": "nenhum",
+        "unicidade": false,
+        "referencial": false,
+        "adhoc": "limitada",
+        "busca": "avancada",
+        "grafo": "nenhuma",
+        "serie": "limitada",
+        "distribuicao": "nativa",
+        "leitura": "eventual",
+        "durabilidadeSincrona": false,
+        "gerenciado": true,
+        "custoOp": "alto",
+        "efemeroOk": false,
+        "modelo": "busca",
+        "p": 0.3,
+        "e": 0.22,
+        "arquitetura": "distribuida"
+      },
+      "ressalvas": {
+        "papel": "índice alimentado por outro banco; não é a fonte da verdade",
+        "leitura": "refresh padrão de 1s: o documento gravado não aparece na busca imediatamente"
+      }
+    }
+  ]
+}

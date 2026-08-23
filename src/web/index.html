@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Qual banco, e por quê — seletor de banco de dados</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --tinta:#141A2B;
+  --tinta-70:rgba(20,26,43,.70);
+  --tinta-45:rgba(20,26,43,.45);
+  --papel:#E7EAEE;
+  --papel-2:#F4F6F8;
+  --verdete:#2E7D6F;
+  --verdete-fraco:rgba(46,125,111,.12);
+  --barro:#B2453A;
+  --mostarda:#C8A02E;
+  --linha:rgba(20,26,43,.14);
+  --linha-forte:rgba(20,26,43,.28);
+  --display:"Bricolage Grotesque",system-ui,sans-serif;
+  --corpo:"IBM Plex Sans",system-ui,sans-serif;
+  --dado:"IBM Plex Mono",ui-monospace,monospace;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;background:var(--papel);color:var(--tinta);
+  font-family:var(--corpo);font-size:16px;line-height:1.55;
+  background-image:linear-gradient(var(--linha) 1px,transparent 1px),linear-gradient(90deg,var(--linha) 1px,transparent 1px);
+  background-size:48px 48px;background-position:-1px -1px;
+}
+.env{max-width:1180px;margin:0 auto;padding:0 24px}
+
+/* ---------- cabeçalho ---------- */
+.topo{padding:72px 0 40px;border-bottom:1px solid var(--linha-forte)}
+.sobrancelha{
+  font-family:var(--dado);font-size:12px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--verdete);display:flex;align-items:center;gap:10px;margin:0 0 20px
+}
+.sobrancelha::after{content:"";height:1px;flex:1;background:var(--linha-forte)}
+h1{
+  font-family:var(--display);font-weight:800;font-size:clamp(38px,6.4vw,76px);
+  line-height:.94;letter-spacing:-.03em;margin:0 0 20px;max-width:16ch
+}
+h1 em{font-style:normal;color:var(--verdete)}
+.lede{max-width:60ch;font-size:clamp(16px,1.6vw,19px);color:var(--tinta-70);margin:0}
+.lede b{color:var(--tinta);font-weight:600}
+
+/* ---------- grade principal ---------- */
+.trabalho{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:56px;padding:48px 0 96px;align-items:start}
+@media (max-width:940px){.trabalho{grid-template-columns:1fr;gap:32px}}
+
+/* ---------- perguntas ---------- */
+.progresso{
+  display:flex;align-items:baseline;gap:12px;font-family:var(--dado);font-size:12px;
+  letter-spacing:.08em;text-transform:uppercase;color:var(--tinta-45);margin:0 0 28px
+}
+.barra{height:2px;flex:1;background:var(--linha-forte);position:relative}
+.barra i{position:absolute;inset:0 auto 0 0;background:var(--verdete);width:0;transition:width .35s ease}
+
+.q{border-top:1px solid var(--linha);padding:26px 0}
+.q:first-of-type{border-top:none;padding-top:0}
+.q-cab{display:flex;gap:14px;align-items:baseline;margin:0 0 6px}
+.q-num{font-family:var(--dado);font-size:12px;color:var(--verdete);flex:none;padding-top:3px}
+.q-tit{font-family:var(--display);font-weight:700;font-size:20px;letter-spacing:-.015em;margin:0;line-height:1.25}
+.q-termo{
+  font-family:var(--dado);font-size:11px;font-weight:400;letter-spacing:.04em;
+  color:var(--verdete);background:var(--verdete-fraco);border:1px solid rgba(46,125,111,.3);
+  padding:2px 7px;white-space:nowrap;position:relative;top:-2px;cursor:help
+}
+.q-ajuda{margin:0 0 16px 34px;font-size:14px;color:var(--tinta-45);max-width:56ch}
+.opcoes{display:grid;gap:8px;margin-left:34px}
+@media (max-width:520px){.q-ajuda,.opcoes{margin-left:0}}
+
+.opcao{display:block;position:relative;cursor:pointer}
+.opcao input{position:absolute;opacity:0;width:1px;height:1px}
+.opcao span{
+  display:block;padding:11px 15px 11px 40px;background:var(--papel-2);
+  border:1px solid var(--linha);font-size:15px;position:relative;transition:border-color .15s,background .15s
+}
+.opcao span::before{
+  content:"";position:absolute;left:15px;top:50%;transform:translateY(-50%);
+  width:12px;height:12px;border:1px solid var(--linha-forte);background:#fff
+}
+.opcao:hover span{border-color:var(--linha-forte)}
+.opcao input:checked + span{border-color:var(--verdete);background:var(--verdete-fraco)}
+.opcao input:checked + span::before{background:var(--verdete);border-color:var(--verdete)}
+.opcao input:focus-visible + span{outline:2px solid var(--tinta);outline-offset:2px}
+.opcao small{display:block;font-family:var(--dado);font-size:12px;color:var(--tinta-45);margin-top:3px}
+
+/* ---------- painel PACELC (elemento-assinatura) ---------- */
+.painel{position:sticky;top:24px}
+@media (max-width:940px){.painel{position:static}}
+.painel-cx{background:var(--papel-2);border:1px solid var(--linha-forte);padding:20px}
+.painel-tit{font-family:var(--dado);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--tinta-45);margin:0 0 4px}
+.painel-sub{font-size:13px;color:var(--tinta-70);margin:0 0 16px}
+svg.plano{width:100%;height:auto;display:block}
+.eixo-txt{font-family:var(--dado);font-size:3.1px;fill:var(--tinta-45);letter-spacing:.02em}
+.eixo-lbl{font-family:var(--dado);font-size:3.4px;fill:var(--tinta);font-weight:600}
+.ponto{transition:opacity .3s ease,r .3s ease}
+.ponto-nome{font-family:var(--dado);font-size:3.2px;fill:var(--tinta-70);transition:opacity .3s ease}
+.alvo{transition:transform .45s cubic-bezier(.2,.7,.3,1)}
+.legenda{display:flex;gap:16px;flex-wrap:wrap;font-family:var(--dado);font-size:11px;color:var(--tinta-45);margin:14px 0 0;padding-top:12px;border-top:1px solid var(--linha)}
+.legenda i{display:inline-block;width:8px;height:8px;margin-right:5px;vertical-align:0}
+.chave-alvo{background:var(--mostarda);border-radius:50%}
+.chave-cand{background:var(--verdete);border-radius:50%}
+.chave-fora{background:var(--linha-forte);border-radius:50%}
+
+/* ---------- resultado ---------- */
+.resultado{border-top:1px solid var(--linha-forte);padding:56px 0 110px}
+.resultado[hidden]{display:none}
+.res-cab{display:flex;justify-content:space-between;align-items:baseline;gap:24px;flex-wrap:wrap;margin:0 0 32px}
+h2{font-family:var(--display);font-weight:800;font-size:clamp(28px,3.6vw,42px);letter-spacing:-.025em;margin:0;line-height:1.05}
+.pos{border:1px solid var(--linha-forte);background:var(--papel-2);padding:20px;margin:0 0 12px;display:grid;grid-template-columns:auto 1fr auto;gap:18px;align-items:start}
+.pos-rank{font-family:var(--display);font-weight:800;font-size:32px;line-height:1;color:var(--verdete);min-width:34px}
+.pos h3{font-family:var(--display);font-weight:700;font-size:21px;margin:0 0 2px;letter-spacing:-.015em}
+.pos-fam{font-family:var(--dado);font-size:12px;color:var(--tinta-45);margin:0 0 10px}
+.pos-razoes{margin:0;padding:0;list-style:none;display:grid;gap:5px}
+.pos-razoes li{font-size:14px;color:var(--tinta-70);padding-left:16px;position:relative}
+.pos-razoes li::before{content:"+";position:absolute;left:0;color:var(--verdete);font-family:var(--dado)}
+.pos-razoes li.contra{color:var(--tinta-70)}
+.pos-razoes li.contra::before{content:"−";color:var(--barro)}
+.pos-med{font-family:var(--dado);font-size:12px;color:var(--tinta-45);text-align:right;white-space:nowrap}
+.pos-med b{display:block;font-size:22px;color:var(--tinta);font-weight:600;line-height:1.2}
+@media (max-width:640px){.pos{grid-template-columns:auto 1fr}.pos-med{grid-column:2;text-align:left}}
+
+.fora{border:1px dashed var(--linha-forte);padding:18px 20px;margin:24px 0 0}
+.fora h4{font-family:var(--dado);font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--barro);margin:0 0 10px;font-weight:600}
+.fora ul{margin:0;padding:0;list-style:none;display:grid;gap:6px}
+.fora li{font-size:14px;color:var(--tinta-70)}
+.fora li b{color:var(--tinta);font-weight:600}
+
+.adr{margin:40px 0 0}
+.adr-cab{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;margin:0 0 12px}
+.adr-cab p{margin:0;font-size:14px;color:var(--tinta-45);max-width:54ch}
+button.acao{
+  font-family:var(--dado);font-size:13px;letter-spacing:.04em;padding:10px 18px;cursor:pointer;
+  background:var(--tinta);color:var(--papel);border:1px solid var(--tinta);transition:background .15s
+}
+button.acao:hover{background:#000}
+button.acao:focus-visible{outline:2px solid var(--verdete);outline-offset:2px}
+button.acao.fantasma{background:transparent;color:var(--tinta)}
+button.acao.fantasma:hover{background:var(--linha)}
+pre.md{
+  background:var(--tinta);color:#DDE3E8;font-family:var(--dado);font-size:12.5px;line-height:1.65;
+  padding:22px;overflow-x:auto;margin:0;white-space:pre-wrap;word-break:break-word;max-height:460px
+}
+
+.rodape{border-top:1px solid var(--linha-forte);padding:32px 0 56px;font-size:13px;color:var(--tinta-45);max-width:72ch}
+.rodape p{margin:0 0 8px}
+
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+/* --- v2: trilha de auditoria, sensibilidade, avisos --- */
+.q{border:none;margin:0}
+.q-tit{padding:0}
+.erro{border:1px solid var(--barro);padding:16px;font-size:15px}
+.erro code{font-family:var(--dado);background:var(--papel-2);padding:1px 5px}
+.versao{font-family:var(--dado);font-size:11px;font-weight:400;color:var(--tinta-45)}
+.vazio{font-size:15px;max-width:62ch}
+.pos-razoes li b{font-family:var(--dado);color:var(--barro);font-weight:600;margin-right:2px}
+.pos-razoes li.contra::before{content:""}
+.pos-razoes li.contra{padding-left:0}
+.pos-razoes li.pleno{padding-left:16px;color:var(--verdete)}
+.pos-razoes li.pleno::before{content:"✓";position:absolute;left:0;color:var(--verdete)}
+.avisos{margin:10px 0 0;padding:10px 0 0;list-style:none;border-top:1px solid var(--linha);display:grid;gap:4px}
+.avisos li{font-family:var(--dado);font-size:12px;color:var(--tinta-45);padding-left:14px;position:relative}
+.avisos li::before{content:"!";position:absolute;left:0;color:var(--mostarda);font-weight:600}
+.aviso-margem{border-left:3px solid var(--mostarda);background:var(--papel-2);padding:14px 18px;margin:0 0 24px;font-size:15px}
+.mais{font-family:var(--dado);font-size:11px;color:var(--tinta-45)}
+.painel-sec{border:1px solid var(--linha-forte);padding:18px 20px;margin:24px 0 0}
+.painel-sec h4{font-family:var(--dado);font-size:12px;letter-spacing:.1em;text-transform:uppercase;margin:0 0 6px;font-weight:600}
+.painel-sec > p{margin:0 0 12px;font-size:13px;color:var(--tinta-45);max-width:64ch}
+.painel-sec ul{margin:0;padding:0;list-style:none;display:grid;gap:8px}
+.painel-sec li{font-size:14px;color:var(--tinta-70)}
+.painel-sec li b{color:var(--tinta);font-weight:600}
+.h-fora h4{color:var(--barro)}
+.h-sens h4{color:var(--verdete)}
+.h-inv h4{color:var(--mostarda)}
+.sens-q{display:block;font-weight:600;color:var(--tinta);margin-bottom:3px}
+.painel-sec li ul{margin:0;padding-left:14px;gap:3px}
+.painel-sec li li{font-family:var(--dado);font-size:12.5px;color:var(--tinta-45)}
+.rodape-versao{font-family:var(--dado);font-size:11px;color:var(--tinta-45);margin-top:6px}
+</style>
+</head>
+<body>
+<header class="topo">
+  <div class="env">
+    <p class="sobrancelha">Escolha de banco de dados</p>
+    <h1>Qual banco, e <em>por quê</em>.</h1>
+    <p class="lede">Nove perguntas sobre <b>o que você está construindo</b> — nenhuma sobre banco de dados. Não precisa saber a resposta técnica: cada pergunta vem com um exemplo. No fim sai um ranking, o motivo de cada descarte e um <b>registro de decisão pronto para colar no repositório</b>. Nada sai do seu navegador.</p>
+  </div>
+</header>
+
+<div class="env">
+  <div class="trabalho">
+
+    <main>
+      <p class="progresso"><span id="contador">0 de 9 respondidas</span><span class="barra"><i id="barraFill"></i></span></p>
+      <form id="form"></form>
+    </main>
+
+    <aside class="painel">
+      <div class="painel-cx">
+        <p class="painel-tit">Plano PACELC</p>
+        <p class="painel-sub">O losango amarelo é o que o seu caso pede. Os pontos são como cada banco se comporta por padrão. Quanto mais perto, melhor o encaixe.</p>
+        <svg class="plano" viewBox="0 0 100 100" role="img" aria-labelledby="planoTit">
+          <title id="planoTit">Posição dos bancos candidatos no plano PACELC</title>
+          <rect x="14" y="10" width="80" height="76" fill="#fff" stroke="var(--linha)"/>
+          <line x1="54" y1="10" x2="54" y2="86" stroke="var(--linha)" stroke-dasharray="1.5 1.5"/>
+          <line x1="14" y1="48" x2="94" y2="48" stroke="var(--linha)" stroke-dasharray="1.5 1.5"/>
+          <text class="eixo-lbl" x="14" y="7">Prefere estar certo <tspan fill="var(--tinta-45)">· EC</tspan></text>
+          <text class="eixo-lbl" x="14" y="93">Prefere estar rápido <tspan fill="var(--tinta-45)">· EL</tspan></text>
+          <text class="eixo-txt" x="14" y="97">com tudo funcionando, a escolha é essa</text>
+          <text class="eixo-txt" x="12" y="48" transform="rotate(-90 12 48)" text-anchor="middle">se a rede cair: segue no ar · PA</text>
+          <text class="eixo-txt" x="98" y="48" transform="rotate(90 98 48)" text-anchor="middle">se a rede cair: prefere recusar · PC</text>
+          <g id="pontos"></g>
+          <g id="alvo" class="alvo" opacity="0">
+            <path d="M0,-4 L4,0 L0,4 L-4,0 Z" fill="var(--mostarda)" stroke="var(--tinta)" stroke-width=".5"/>
+          </g>
+        </svg>
+        <p class="legenda">
+          <span><i class="chave-alvo"></i>seu requisito</span>
+          <span><i class="chave-cand"></i>candidato vivo</span>
+          <span><i class="chave-fora"></i>eliminado</span>
+        </p>
+      </div>
+    </aside>
+
+  </div>
+</div>
+
+<section class="resultado" id="resultado" hidden>
+  <div class="env">
+    <div class="res-cab">
+      <h2>O que sobra</h2>
+      <button class="acao fantasma" id="btnReset" type="button">Recomeçar</button>
+    </div>
+
+    <p class="aviso-margem" id="avisoMargem" hidden></p>
+    <div id="ranking"></div>
+
+    <div class="painel-sec h-fora" id="blocoFora" hidden>
+      <h4>Fora da disputa</h4>
+      <p>Não é pontuação baixa: são candidatos que não conseguem fazer algo que você exigiu.</p>
+      <ul id="listaFora"></ul>
+    </div>
+
+    <div class="painel-sec" id="blocoDerivado" hidden>
+      <h4>Não avaliados</h4>
+      <p>Extensões que só entram na disputa quando a necessidade que elas resolvem aparece.</p>
+      <ul id="listaDerivado"></ul>
+    </div>
+
+    <div class="painel-sec h-sens" id="blocoSens" hidden>
+      <h4>O que está segurando este resultado</h4>
+      <p>Das nove respostas, só estas mudam o vencedor se forem diferentes. As outras não importam para o seu caso.</p>
+      <ul id="listaSens"></ul>
+    </div>
+    <div class="painel-sec h-sens" id="sensRobusto" hidden>
+      <h4>Resultado robusto</h4>
+      <p>Nenhuma resposta isolada muda o vencedor.</p>
+    </div>
+
+    <div class="painel-sec h-inv" id="blocoInvestigar" hidden>
+      <h4>Descubra isto antes de decidir</h4>
+      <p>Você respondeu com incerteza, e a resposta certa mudaria a decisão. Vale a pesquisa.</p>
+      <ul id="listaInvestigar"></ul>
+    </div>
+
+    <div class="adr">
+      <div class="adr-cab">
+        <p>O registro abaixo guarda o <em>raciocínio</em>, não só a conclusão. É o que sobrevive à decisão quando alguém perguntar, daqui a um ano, por que foi assim.</p>
+        <button class="acao" id="btnCopiar" type="button">Copiar ADR</button>
+      </div>
+      <pre class="md" id="adr"></pre>
+    </div>
+  </div>
+</section>
+
+<footer class="rodape">
+  <div class="env">
+    <p>Isto é um ponto de partida, não um veredito. Um banco que o time já sabe operar ganha de um banco tecnicamente superior que ninguém sabe levantar de volta às três da manhã.</p>
+    <p>Os pontos no gráfico mostram o comportamento <em>na configuração padrão</em>. Cassandra, DynamoDB e MongoDB deixam você mudar isso a cada operação — na prática, o ponto se move.</p>
+    <p class="rodape-versao" id="versaoBase"></p>
+  </div>
+</footer>
+<script type="module" src="./app.js"></script>
+</body>
+</html>

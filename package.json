@@ -1,0 +1,12 @@
+{
+  "name": "seletor-de-banco",
+  "version": "2.0.0",
+  "description": "Questionário sobre o domínio que devolve um ranking de bancos de dados, a trilha de como cada ponto foi perdido e um ADR pronto para o repositório.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "node scripts/servidor.js",
+    "test": "node --test src/motor/motor.test.js"
+  },
+  "engines": { "node": ">=20" }
+}

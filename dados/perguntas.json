@@ -1,0 +1,519 @@
+{
+  "versaoPolitica": "2026-08-23",
+  "severidades": {
+    "bloqueante": null,
+    "grave": 30,
+    "moderado": 12,
+    "leve": 5
+  },
+  "pesoDistanciaPacelc": 25,
+  "perguntas": [
+    {
+      "id": "atomicidade",
+      "termo": "atomicidade",
+      "titulo": "O que precisa ser salvo junto, tudo ou nada?",
+      "ajuda": "Se der erro no meio da gravação, o que não pode ficar salvo pela metade?",
+      "opcoes": [
+        {
+          "id": "agregado",
+          "texto": "É uma coisa só, mesmo tendo listas dentro",
+          "exemplo": "um pedido com os itens dele — salva junto, lê junto",
+          "requisitos": [
+            {
+              "cap": "transacao",
+              "op": "min",
+              "valor": "documento",
+              "sev": "grave",
+              "motivo": "não garante nem que um registro inteiro entre de uma vez"
+            }
+          ]
+        },
+        {
+          "id": "multi",
+          "texto": "São várias coisas separadas que mudam ao mesmo tempo",
+          "exemplo": "tirar R$ 100 de uma conta e colocar em outra. As duas ou nenhuma.",
+          "requisitos": [
+            {
+              "cap": "transacao",
+              "op": "min",
+              "valor": "global",
+              "sev": "bloqueante",
+              "motivo": "não altera várias entidades numa transação única"
+            }
+          ]
+        },
+        {
+          "id": "indefinido",
+          "texto": "Ainda não sei — o desenho está mudando",
+          "exemplo": "na dúvida, ganha quem não te obriga a decidir agora",
+          "incerta": true,
+          "requisitos": [
+            {
+              "cap": "transacao",
+              "op": "min",
+              "valor": "global",
+              "sev": "moderado",
+              "motivo": "se o modelo virar multi-entidade depois, não acompanha"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "invariantes",
+      "termo": "integridade",
+      "titulo": "Se chegar um dado errado, quem barra?",
+      "ajuda": "Errado como: um pedido apontando para um cliente que não existe, ou dois cadastros com o mesmo CPF.",
+      "opcoes": [
+        {
+          "id": "banco",
+          "texto": "O banco. Ele recusa e a gravação falha ali mesmo",
+          "exemplo": "CPF repetido nem entra na tabela",
+          "requisitos": [
+            {
+              "cap": "unicidade",
+              "op": "eq",
+              "valor": true,
+              "sev": "bloqueante",
+              "motivo": "não garante que um campo seja único"
+            },
+            {
+              "cap": "referencial",
+              "op": "eq",
+              "valor": true,
+              "sev": "grave",
+              "motivo": "não checa se o registro apontado existe: a validação sobra para o código"
+            }
+          ]
+        },
+        {
+          "id": "app",
+          "texto": "O código da aplicação. Se escapar, a gente corrige depois",
+          "exemplo": "funciona quando dá para reconstruir o dado a partir da origem",
+          "requisitos": []
+        },
+        {
+          "id": "misto",
+          "texto": "Algumas o banco barra, o resto fica no código",
+          "requisitos": [
+            {
+              "cap": "unicidade",
+              "op": "eq",
+              "valor": true,
+              "sev": "moderado",
+              "motivo": "nem a unicidade básica fica no banco"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "skew",
+      "termo": "write skew",
+      "titulo": "Tem alguma regra que precisa olhar várias linhas ao mesmo tempo?",
+      "ajuda": "O caso clássico: “pelo menos um médico tem que estar de plantão”. Dois pedem folga no mesmo instante, cada um vê o outro de plantão, e os dois saem. Nenhuma linha estava errada sozinha — o conjunto ficou.",
+      "opcoes": [
+        {
+          "id": "sim",
+          "texto": "Sim, existe uma regra desse tipo",
+          "exemplo": "no máximo 5 vagas; limite total de crédito somando todos os contratos do cliente",
+          "requisitos": [
+            {
+              "cap": "isolamento",
+              "op": "min",
+              "valor": "serializavel",
+              "sev": "bloqueante",
+              "motivo": "não detecta esse tipo de conflito entre gravações simultâneas"
+            }
+          ]
+        },
+        {
+          "id": "nao",
+          "texto": "Não. Cada regra olha só o próprio registro",
+          "exemplo": "saldo não pode ficar negativo — dá para checar na própria linha",
+          "requisitos": []
+        },
+        {
+          "id": "talvez",
+          "texto": "Não sei dizer",
+          "incerta": true,
+          "exemplo": "a escolha segura é um banco que consiga te proteger disso depois",
+          "requisitos": [
+            {
+              "cap": "isolamento",
+              "op": "min",
+              "valor": "serializavel",
+              "sev": "moderado",
+              "motivo": "se a regra aparecer depois, não terá como garanti-la"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "perda",
+      "termo": "durabilidade",
+      "titulo": "Se o banco cair agora, pode perder os últimos segundos de gravação?",
+      "ajuda": "Manter uma cópia sempre em dia deixa toda gravação mais lenta. Manter uma cópia atrasada é rápido, mas o que estava no caminho se perde.",
+      "opcoes": [
+        {
+          "id": "zero",
+          "texto": "Não. Se eu avisei o usuário que salvou, tem que estar salvo",
+          "exemplo": "pagamento, lançamento contábil, contrato assinado",
+          "pacelc": {
+            "p": 0.95
+          },
+          "requisitos": [
+            {
+              "cap": "durabilidadeSincrona",
+              "op": "eq",
+              "valor": true,
+              "sev": "bloqueante",
+              "motivo": "não confirma a gravação numa segunda cópia antes de responder"
+            }
+          ]
+        },
+        {
+          "id": "segundos",
+          "texto": "Alguns segundos, tudo bem",
+          "pacelc": {
+            "p": 0.6
+          },
+          "requisitos": []
+        },
+        {
+          "id": "reprocessa",
+          "texto": "Pode perder. Quem mandou envia de novo",
+          "exemplo": "log, métrica, evento de fila que dá para reprocessar",
+          "pacelc": {
+            "p": 0.2
+          },
+          "requisitos": []
+        }
+      ]
+    },
+    {
+      "id": "leitura",
+      "termo": "read-your-writes",
+      "titulo": "Depois de salvar, o usuário precisa ver a mudança na hora?",
+      "ajuda": "Ler de uma cópia é mais rápido e alivia o banco principal — mas a cópia costuma estar alguns instantes atrás.",
+      "opcoes": [
+        {
+          "id": "forte",
+          "texto": "Sim, sempre. Ele salva e confere na tela seguinte",
+          "exemplo": "editar o endereço e voltar para a listagem",
+          "pacelc": {
+            "e": 0.92
+          },
+          "requisitos": [
+            {
+              "cap": "leitura",
+              "op": "min",
+              "valor": "ajustavel",
+              "sev": "bloqueante",
+              "motivo": "não oferece leitura garantida do que acabou de ser gravado"
+            },
+            {
+              "cap": "leitura",
+              "op": "min",
+              "valor": "forte",
+              "sev": "moderado",
+              "motivo": "consegue, mas só com configuração explícita em cada operação"
+            }
+          ]
+        },
+        {
+          "id": "lag",
+          "texto": "Uns segundos de atraso em telas de consulta é aceitável",
+          "pacelc": {
+            "e": 0.5
+          },
+          "requisitos": []
+        },
+        {
+          "id": "eventual",
+          "texto": "Pode demorar mais. Ninguém vai notar",
+          "exemplo": "contador de visualizações, painel gerencial",
+          "pacelc": {
+            "e": 0.15
+          },
+          "requisitos": []
+        }
+      ]
+    },
+    {
+      "id": "acesso",
+      "termo": "padrão de acesso",
+      "titulo": "Como você vai buscar esses dados depois?",
+      "ajuda": "Isso pesa mais na escolha do que o formato em que o dado é guardado.",
+      "opcoes": [
+        {
+          "id": "chave",
+          "texto": "Pelo id ou código, e eu já sei qual quero",
+          "exemplo": "carregar o usuário 4821",
+          "requisitos": []
+        },
+        {
+          "id": "adhoc",
+          "texto": "Com filtros e cruzamentos que mudam toda hora",
+          "exemplo": "o relatório novo que o negócio pediu ontem, juntando quatro tabelas",
+          "requisitos": [
+            {
+              "cap": "adhoc",
+              "op": "min",
+              "valor": "limitada",
+              "sev": "bloqueante",
+              "motivo": "não tem linguagem de consulta: a busca é decidida antes de gravar"
+            },
+            {
+              "cap": "adhoc",
+              "op": "min",
+              "valor": "completa",
+              "sev": "grave",
+              "motivo": "consulta cruzada existe, mas sem planejador que otimize join de verdade"
+            }
+          ]
+        },
+        {
+          "id": "texto",
+          "texto": "Digitando palavras, como num campo de busca",
+          "exemplo": "procurar “tenis corrida azul” e vir ordenado por relevância",
+          "requisitos": [
+            {
+              "cap": "busca",
+              "op": "min",
+              "valor": "basica",
+              "sev": "bloqueante",
+              "motivo": "não indexa texto para busca por relevância"
+            },
+            {
+              "cap": "busca",
+              "op": "min",
+              "valor": "avancada",
+              "sev": "moderado",
+              "motivo": "resolve busca simples; sem facetas, sinônimos e tolerância a erro de digitação"
+            }
+          ]
+        },
+        {
+          "id": "grafo",
+          "texto": "Seguindo as ligações entre uma coisa e outra",
+          "exemplo": "quem é sócio de quem, descendo cinco níveis",
+          "requisitos": [
+            {
+              "cap": "grafo",
+              "op": "min",
+              "valor": "limitada",
+              "sev": "bloqueante",
+              "motivo": "não percorre ligações entre registros"
+            },
+            {
+              "cap": "grafo",
+              "op": "min",
+              "valor": "nativa",
+              "sev": "grave",
+              "motivo": "percorre poucos níveis antes de degradar"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "formato",
+      "termo": "modelo de dados",
+      "titulo": "Como o dado é, na prática?",
+      "opcoes": [
+        {
+          "id": "tabular",
+          "texto": "Campos fixos, e as coisas se ligam entre si",
+          "exemplo": "cliente tem conta, conta tem contrato",
+          "requisitos": [
+            {
+              "cap": "modelo",
+              "op": "em",
+              "valor": [
+                "relacional",
+                "serie"
+              ],
+              "sev": "moderado",
+              "motivo": "guardar dado relacional aqui empurra o join para a aplicação"
+            }
+          ]
+        },
+        {
+          "id": "documento",
+          "texto": "Cada registro tem campos diferentes do outro",
+          "exemplo": "catálogo onde geladeira e livro não têm nada em comum",
+          "requisitos": [
+            {
+              "cap": "modelo",
+              "op": "em",
+              "valor": [
+                "documento",
+                "relacional",
+                "busca"
+              ],
+              "sev": "moderado",
+              "motivo": "esquema variável não é o formato natural aqui"
+            }
+          ]
+        },
+        {
+          "id": "serie",
+          "texto": "Chega o tempo todo com data e hora, e nunca mais muda",
+          "exemplo": "leitura de sensor, métrica de servidor",
+          "requisitos": [
+            {
+              "cap": "serie",
+              "op": "min",
+              "valor": "limitada",
+              "sev": "bloqueante",
+              "motivo": "não consulta por janela de tempo nem descarta o que envelheceu"
+            },
+            {
+              "cap": "serie",
+              "op": "min",
+              "valor": "nativa",
+              "sev": "grave",
+              "motivo": "aguenta, mas sem compressão nem retenção automática por tempo"
+            }
+          ]
+        },
+        {
+          "id": "efemero",
+          "texto": "Vive pouco e é lido o tempo todo",
+          "exemplo": "sessão de login, carrinho, cache, contador de tentativas",
+          "requisitos": [
+            {
+              "cap": "efemeroOk",
+              "op": "eq",
+              "valor": true,
+              "sev": "bloqueante",
+              "motivo": "caro e lento demais para dado que dura minutos e expira sozinho"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "escala",
+      "termo": "escala de escrita",
+      "titulo": "Quantas gravações por segundo, de verdade?",
+      "ajuda": "Use o número de hoje multiplicado por três, não o do slide para investidor. A maioria dos sistemas corporativos nunca sai da primeira faixa.",
+      "opcoes": [
+        {
+          "id": "vertical",
+          "texto": "Centenas. Uma máquina bem dimensionada aguenta",
+          "exemplo": "é aqui que quase todo sistema interno vive a vida inteira",
+          "requisitos": [
+            {
+              "cap": "custoOp",
+              "op": "min",
+              "valor": "medio",
+              "sev": "moderado",
+              "motivo": "complexidade operacional que essa escala não justifica"
+            },
+            {
+              "cap": "arquitetura",
+              "op": "em",
+              "valor": [
+                "monolitica"
+              ],
+              "sev": "moderado",
+              "motivo": "arquitetura distribuída cobra operação e latência que essa escala não justifica"
+            }
+          ]
+        },
+        {
+          "id": "crescente",
+          "texto": "Milhares, e crescendo. Vou precisar de cópias de leitura",
+          "requisitos": [
+            {
+              "cap": "distribuicao",
+              "op": "min",
+              "valor": "manual",
+              "sev": "moderado",
+              "motivo": "sem caminho claro para dividir a carga depois"
+            }
+          ]
+        },
+        {
+          "id": "horizontal",
+          "texto": "Dezenas de milhares ou mais, desde o primeiro dia",
+          "exemplo": "telemetria de milhares de dispositivos ao mesmo tempo",
+          "requisitos": [
+            {
+              "cap": "distribuicao",
+              "op": "min",
+              "valor": "nativa",
+              "sev": "bloqueante",
+              "motivo": "não distribui gravação entre máquinas sem trabalho manual pesado"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "operacao",
+      "termo": "custo operacional",
+      "titulo": "Quem cuida disso quando quebrar de madrugada?",
+      "ajuda": "É o critério que mais elimina candidato na vida real, e o que menos aparece nas comparações técnicas.",
+      "opcoes": [
+        {
+          "id": "gerenciado",
+          "texto": "Ninguém aqui. Precisa ser um serviço gerenciado",
+          "exemplo": "a nuvem cuida de backup, atualização e recuperação",
+          "requisitos": [
+            {
+              "cap": "gerenciado",
+              "op": "eq",
+              "valor": true,
+              "sev": "bloqueante",
+              "motivo": "não existe como serviço gerenciado maduro"
+            }
+          ]
+        },
+        {
+          "id": "experiente",
+          "texto": "Temos gente que já opera banco em produção",
+          "requisitos": []
+        },
+        {
+          "id": "minimo",
+          "texto": "Quero o menor número de peças possível",
+          "exemplo": "o Postgres sozinho já faz JSON, busca por texto, série temporal e geolocalização",
+          "requisitos": [
+            {
+              "cap": "custoOp",
+              "op": "min",
+              "valor": "medio",
+              "sev": "grave",
+              "motivo": "exige time dedicado para operar com segurança"
+            },
+            {
+              "cap": "serie",
+              "op": "min",
+              "valor": "limitada",
+              "sev": "leve",
+              "motivo": "se aparecer dado temporal, vai exigir um segundo sistema"
+            },
+            {
+              "cap": "busca",
+              "op": "min",
+              "valor": "basica",
+              "sev": "leve",
+              "motivo": "se aparecer busca por texto, vai exigir um segundo sistema"
+            },
+            {
+              "cap": "grafo",
+              "op": "min",
+              "valor": "limitada",
+              "sev": "leve",
+              "motivo": "se aparecer consulta por ligações, vai exigir um segundo sistema"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
