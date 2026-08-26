@@ -1,9 +1,12 @@
-# Seletor de banco de dados
+# CAP na prática
 
-Dez perguntas sobre o que você está construindo — nenhuma sobre banco de
-dados. Devolve um ranking, por que o vencedor venceu e como cada ponto foi
-perdido, quais das suas respostas realmente seguram o resultado, e um ADR
-pronto para o repositório.
+Qual banco, e por quê.
+
+Doze perguntas sobre o que você está construindo — nenhuma sobre banco de
+dados —, organizadas pelos tópicos do teorema CAP e do PACELC. Devolve um
+ranking, por que o vencedor venceu e como cada ponto foi perdido, quais das
+suas respostas realmente seguram o resultado, e um ADR pronto para o
+repositório.
 
 Zero dependências. Node só para servir os arquivos e rodar os testes.
 
@@ -11,7 +14,7 @@ Zero dependências. Node só para servir os arquivos e rodar os testes.
 
 ```bash
 npm start     # http://localhost:5173
-npm test      # 29 testes: âncoras, invariantes, robustez de pesos, pares adversariais
+npm test      # 40 testes: âncoras, invariantes, robustez de pesos, pares adversariais, simulador CAP
 ```
 
 Não abra `src/web/index.html` direto pelo Explorer. O navegador bloqueia
@@ -28,11 +31,32 @@ src/motor/
   motor.js            função pura, sem I/O — roda no Node e no navegador
   motor.test.js       casos-âncora, o contrato contra regressão
 src/web/
-  index.html          interface
+  index.html          interface do questionário
   app.js              liga a interface ao motor
+  tokens.css          paleta e tipografia compartilhadas pelas páginas
+  cap.html            simulador jogável do teorema CAP
+  cap.js              anima a cena; não decide nada
+  capSimulacao.js     roteiro e regras do jogo — puro, sem DOM
+  capSimulacao.test.js
 scripts/
   servidor.js         estático, sem dependência
 ```
+
+## O simulador CAP
+
+`cap.html` é o desenho clássico primário-réplica virando jogo: a aplicação
+grava no Nó A e lê do Nó B. O jogador grava, lê, parte a rede, grava de novo
+— e aí uma leitura chega no B. As opções são responder o valor velho (fica no
+ar: lado **A**), recusar até a rede voltar (não mente: lado **C**) e
+responder o valor novo — que existe de propósito e nunca avança, porque é
+exatamente o que o teorema prova impossível. Com a rede de volta, a terceira
+decisão é o *else* do PACELC: esperar a réplica confirmar (EC) ou responder
+já (EL).
+
+As duas escolhas viram um ponto no plano PACELC e os três bancos da base mais
+próximos daquele canto — o mesmo `p`/`e` de `bancos.json`, sem uma segunda
+tabela para manter. Extensões (`derivaDe`) ficam de fora da lista: o
+Timescale não explica um quadrante melhor que o Postgres.
 
 O mesmo `motor.js` roda nos testes e no navegador. Não existe uma segunda
 implementação para manter em sincronia.
@@ -47,13 +71,28 @@ de lado por configuração de operação.
 Por isso o motor usa PACELC (Abadi, 2012): a pergunta do CAP durante a falha
 (**PA/PC**, alimentada pela pergunta sobre falha de rede) mais a escolha que
 o banco faz o dia inteiro em operação normal — latência ou consistência
-(**EL/EC**, alimentada pela pergunta de read-your-writes). Os dois eixos são
-contínuos (`p`/`e` em `bancos.json`), as respostas viram um alvo, e a
-distância de cada banco até o alvo custa até 25 pontos.
+(**EL/EC**, alimentada pelas perguntas de read-your-writes e de orçamento de
+latência). Os dois eixos são contínuos (`p`/`e` em `bancos.json`), as
+respostas viram um alvo, e a distância de cada banco até o alvo custa até 25
+pontos. Quando mais de uma pergunta alimenta o mesmo eixo, o alvo é a média
+das contribuições: tensão entre respostas ("quero read-your-writes E
+milissegundos") vira meio-termo declarado, não sobrescrita silenciosa.
+
+O questionário é apresentado em quatro grupos, um por tópico dos modelos
+(`grupos` em `perguntas.json`):
+
+- **CAP · C — Consistência:** atomicidade, integridade, write skew,
+  durabilidade. O que o banco promete sobre o dado estar certo.
+- **CAP · A e P — Disponibilidade e partição:** onde ficam usuários e cópias
+  (a chance de partição na sua topologia) e o que fazer quando ela acontece.
+- **PACELC · ELC — O dia a dia sem falha:** read-your-writes e orçamento de
+  latência — o *else* do PACELC.
+- **Fora do teorema:** padrão de acesso, modelo de dados, escala e operação.
 
 De propósito, PACELC é só uma fatia da nota: o teorema não diz nada sobre
 transação, integridade, modelo de consulta nem custo operacional — e é isso
-que decide a maioria dos casos reais.
+que decide a maioria dos casos reais. O último grupo existe — e pesa — por
+isso.
 
 ## As decisões que sustentam o resultado
 

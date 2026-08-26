@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark light">
+<title>Entenda o CAP jogando — CAP na prática</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./tokens.css">
+<style>
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;color:var(--texto);font-family:var(--corpo);font-size:16px;line-height:1.6;
+  background:
+    radial-gradient(1100px 560px at 85% -8%, rgba(139,154,251,.13), transparent 60%),
+    radial-gradient(900px 520px at -5% 12%, rgba(56,213,236,.09), transparent 55%),
+    var(--fundo);
+  background-attachment:fixed;
+}
+.env{max-width:1200px;margin:0 auto;padding:0 24px}
+
+/* ---------- cabeçalho ---------- */
+.topo{padding:56px 0 32px}
+.volta{
+  display:inline-flex;align-items:center;gap:8px;margin:0 0 22px;text-decoration:none;
+  font-family:var(--dado);font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--texto-2);
+  border:1px solid var(--borda-forte);border-radius:999px;padding:7px 16px;background:var(--carta)
+}
+.volta:hover{background:var(--acento-fundo)}
+h1{
+  font-family:var(--display);font-weight:700;font-size:clamp(34px,5vw,58px);
+  line-height:1.05;letter-spacing:-.03em;margin:0 0 14px;max-width:22ch
+}
+h1 em{font-style:normal;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.lede{max-width:64ch;font-size:clamp(15px,1.5vw,18px);color:var(--texto-2);margin:0}
+.lede b{color:var(--texto);font-weight:600}
+
+/* ---------- mesa de jogo ---------- */
+.jogo{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:24px;padding:20px 0 96px;align-items:start}
+@media (max-width:960px){.jogo{grid-template-columns:1fr}}
+
+.cena-cx{
+  background:var(--carta);border:1px solid var(--borda);border-radius:var(--raio);
+  padding:18px;box-shadow:var(--sombra);position:relative
+}
+.fase-chip{
+  position:absolute;top:18px;left:18px;z-index:1;
+  font-family:var(--dado);font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;
+  background:var(--grad);color:#fff;border-radius:999px;padding:6px 13px
+}
+svg.cena{width:100%;height:auto;display:block}
+
+/* elementos da cena */
+.rotulo{font-family:var(--dado);font-size:12px;font-weight:600;fill:var(--texto);letter-spacing:.02em}
+.rotulo-2{font-family:var(--dado);font-size:10px;fill:var(--texto-3)}
+.rotulo-fluxo{font-family:var(--dado);font-size:10.5px;fill:var(--texto-3);letter-spacing:.03em}
+.caixa-app{fill:var(--carta-2);stroke:var(--borda-forte);stroke-dasharray:5 4}
+.servidor{fill:var(--ok);opacity:.85;rx:2}
+.servidor-linha{stroke:var(--carta);stroke-width:1.4}
+.cil-corpo{fill:var(--acento);opacity:.92}
+.cil-topo{fill:var(--acento-2)}
+.cil-db{font-family:var(--dado);font-size:13px;font-weight:600;fill:#fff}
+.fluxo{fill:none;stroke-width:2}
+.fluxo.azul{stroke:var(--acento)}
+.fluxo.verde{stroke:var(--ok)}
+.fluxo.neutro{stroke:var(--borda-forte)}
+.ponta-azul{fill:var(--acento)}
+.ponta-verde{fill:var(--ok)}
+.ponta-neutra{fill:var(--borda-forte)}
+.chip-valor rect{fill:var(--carta-2);stroke:var(--borda-forte);transition:stroke .3s}
+.chip-valor text{font-family:var(--dado);font-size:12px;font-weight:600;fill:var(--texto)}
+.chip-valor.velho rect{stroke:var(--alvo)}
+.chip-valor.velho text{fill:var(--alvo)}
+
+/* estados da cena */
+#corte{opacity:0;transition:opacity .3s}
+#corte path{stroke:var(--perigo);stroke-width:3;fill:none}
+.cena.partida #linhaRepl{stroke:var(--perigo);stroke-dasharray:6 6;opacity:.55}
+.cena.partida #pontaRepl{fill:var(--perigo);opacity:.55}
+.cena.partida #rotuloRepl{fill:var(--perigo)}
+.cena.partida #corte{opacity:1}
+#recusa{opacity:0}
+#recusa rect{fill:var(--carta-2);stroke:var(--perigo)}
+#recusa text{font-family:var(--dado);font-size:11px;font-weight:600;fill:var(--perigo)}
+#recusa.flash{animation:flash 1.8s ease forwards}
+@keyframes flash{0%{opacity:0}12%{opacity:1}75%{opacity:1}100%{opacity:0}}
+
+.no,.app{transform-box:fill-box;transform-origin:center}
+.pulso{animation:pulso .55s ease}
+@keyframes pulso{0%{transform:scale(1)}40%{transform:scale(1.07)}100%{transform:scale(1)}}
+.treme{animation:treme .5s ease}
+@keyframes treme{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-7px)}40%,80%{transform:translateX(7px)}}
+
+.pacote{opacity:0;transform-box:fill-box}
+@supports (offset-path: path("M0,0 L1,1")){
+  .pacote.anda{animation:anda .85s ease-in-out forwards}
+  .pacote.anda-meio{animation:anda-meio .7s ease-in forwards}
+  @keyframes anda{from{offset-distance:0%;opacity:1}to{offset-distance:100%;opacity:1}}
+  @keyframes anda-meio{0%{offset-distance:0%;opacity:1}78%{offset-distance:46%;opacity:1}100%{offset-distance:48%;opacity:0}}
+}
+.pacote.azul{fill:var(--acento)}
+.pacote.verde{fill:var(--ok)}
+
+/* ---------- painel lateral ---------- */
+.mesa{position:sticky;top:24px;display:grid;gap:16px}
+@media (max-width:960px){.mesa{position:static}}
+.mesa-cx{
+  background:var(--carta);border:1px solid var(--borda);border-radius:var(--raio);
+  padding:20px;box-shadow:var(--sombra)
+}
+.placar{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.letra{
+  border:1px solid var(--borda-forte);border-radius:var(--raio-mini);padding:10px 6px;text-align:center;
+  transition:border-color .3s,opacity .3s
+}
+.letra b{display:block;font-family:var(--display);font-weight:700;font-size:26px;line-height:1.1}
+.letra small{font-family:var(--dado);font-size:9.5px;letter-spacing:.04em;text-transform:uppercase;color:var(--texto-3)}
+.letra[data-estado="ok"]{border-color:var(--ok)}
+.letra[data-estado="ok"] b{color:var(--ok)}
+.letra[data-estado="perdida"]{border-color:var(--perigo);opacity:.75}
+.letra[data-estado="perdida"] b{color:var(--perigo);text-decoration:line-through}
+.letra[data-estado="em-jogo"]{border-color:var(--alvo);animation:pisca 1.1s ease infinite}
+.letra[data-estado="em-jogo"] b{color:var(--alvo)}
+.letra[data-estado="ativa"]{border-color:var(--alvo)}
+.letra[data-estado="ativa"] b{color:var(--alvo)}
+.letra[data-estado="dormente"]{opacity:.55}
+.letra[data-estado="dormente"] b{color:var(--texto-3)}
+@keyframes pisca{0%,100%{box-shadow:0 0 0 0 rgba(245,178,61,0)}50%{box-shadow:0 0 0 4px rgba(245,178,61,.25)}}
+
+.historico{
+  border-left:3px solid var(--acento);border-radius:6px;background:var(--acento-fundo);
+  padding:12px 14px;font-size:14px;color:var(--texto-2);margin:0
+}
+.historico.erro{border-left-color:var(--perigo);background:rgba(248,126,149,.08)}
+.historico[hidden]{display:none}
+.narrador{margin:0;font-size:15px;color:var(--texto)}
+
+.acoes{display:grid;gap:8px}
+button.acao{
+  font-family:var(--dado);font-size:13px;font-weight:500;letter-spacing:.03em;padding:12px 22px;cursor:pointer;
+  background:var(--grad);color:#fff;border:none;border-radius:999px;transition:filter .15s,transform .15s,opacity .15s
+}
+button.acao:hover{filter:brightness(1.12);transform:translateY(-1px)}
+button.acao:disabled{opacity:.5;cursor:default;transform:none;filter:none}
+button.acao:focus-visible{outline:2px solid var(--acento);outline-offset:2px}
+button.escolha{
+  font-family:var(--corpo);font-size:14.5px;font-weight:500;text-align:left;cursor:pointer;
+  background:var(--carta-2);color:var(--texto);border:1px solid var(--borda);border-radius:var(--raio-mini);
+  padding:12px 16px;transition:border-color .15s,background .15s,transform .15s,opacity .15s
+}
+button.escolha:hover{border-color:var(--acento);transform:translateY(-1px)}
+button.escolha:disabled{opacity:.5;cursor:default;transform:none}
+button.escolha:focus-visible{outline:2px solid var(--acento);outline-offset:2px}
+button.escolha small{display:block;font-family:var(--dado);font-size:11.5px;font-weight:400;color:var(--texto-3);margin-top:3px}
+
+/* ---------- veredito ---------- */
+.veredito[hidden]{display:none}
+.ver-quadrante{
+  font-family:var(--display);font-weight:700;font-size:40px;letter-spacing:-.02em;line-height:1;margin:0 0 4px;
+  background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent
+}
+.veredito > p{margin:0 0 10px;font-size:14px;color:var(--texto-2)}
+.ver-viz-tit{font-family:var(--dado);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--texto-3);margin:14px 0 8px}
+.veredito ul{margin:0 0 16px;padding:0;list-style:none;display:grid;gap:6px}
+.veredito li{font-size:14px;color:var(--texto-2)}
+.veredito li b{color:var(--texto);font-weight:600}
+.veredito li span{font-family:var(--dado);font-size:11px;color:var(--texto-3);margin-left:6px}
+.ver-acoes{display:grid;gap:8px}
+a.acao{
+  display:block;text-align:center;text-decoration:none;
+  font-family:var(--dado);font-size:13px;font-weight:500;letter-spacing:.03em;padding:12px 22px;
+  background:var(--grad);color:#fff;border-radius:999px;transition:filter .15s
+}
+a.acao:hover{filter:brightness(1.12)}
+button.acao.fantasma,a.acao.fantasma{
+  background:transparent;color:var(--texto);border:1px solid var(--borda-forte)
+}
+button.acao.fantasma:hover,a.acao.fantasma:hover{background:var(--acento-fundo);filter:none}
+
+.erro-carga{border:1px solid var(--perigo);border-radius:var(--raio-mini);background:var(--carta);padding:16px;font-size:15px}
+.erro-carga code{font-family:var(--dado);background:var(--carta-2);padding:1px 5px;border-radius:4px}
+
+.rodape{border-top:1px solid var(--borda);padding:32px 0 56px;font-size:13px;color:var(--texto-3)}
+.rodape p{margin:0 0 8px;max-width:72ch}
+
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<header class="topo">
+  <div class="env">
+    <a class="volta" href="./index.html">← CAP na prática · qual banco, e por quê</a>
+    <h1>Entenda o CAP <em>jogando</em>.</h1>
+    <p class="lede">Um sistema com dois nós, um cabo entre eles e você no comando. Três decisões — e o teorema aparece sozinho: <b>quando a rede parte, não dá para ter tudo</b>. E quando ela volta, a escolha não acaba: só muda de nome.</p>
+  </div>
+</header>
+
+<div class="env">
+  <div class="jogo">
+
+    <section class="cena-cx">
+      <div class="fase-chip" id="faseChip">Fase 1 · Dia normal</div>
+      <svg class="cena" id="cena" viewBox="0 0 640 420" role="img" aria-label="Diagrama: aplicação gravando no Nó A e lendo do Nó B, com replicação entre os nós">
+        <defs>
+          <marker id="pAzul" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+            <path class="ponta-azul" d="M0,0 L10,5 L0,10 Z"/>
+          </marker>
+          <marker id="pVerde" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+            <path class="ponta-verde" d="M0,0 L10,5 L0,10 Z"/>
+          </marker>
+          <marker id="pNeutra" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse">
+            <path id="pontaRepl" class="ponta-neutra" d="M0,0 L10,5 L0,10 Z"/>
+          </marker>
+        </defs>
+
+        <!-- fluxos -->
+        <path id="setaGrava" class="fluxo azul" d="M268,102 C215,150 168,180 153,236" marker-end="url(#pAzul)"/>
+        <text class="rotulo-fluxo" x="190" y="158" text-anchor="end">gravações</text>
+        <path id="setaLe" class="fluxo verde" d="M372,102 C425,150 472,180 487,236" marker-end="url(#pVerde)"/>
+        <text class="rotulo-fluxo" x="452" y="158">leituras</text>
+        <path id="linhaRepl" class="fluxo neutro" d="M196,286 L444,286" marker-end="url(#pNeutra)"/>
+        <text id="rotuloRepl" class="rotulo-fluxo" x="320" y="274" text-anchor="middle">replicação</text>
+        <g id="corte"><path d="M310,270 L330,302 M330,270 L310,302"/></g>
+
+        <!-- aplicação -->
+        <g id="gApp" class="app" transform="translate(320,62)">
+          <rect class="caixa-app" x="-64" y="-40" width="128" height="80" rx="14"/>
+          <g>
+            <rect class="servidor" x="-42" y="-26" width="24" height="36" rx="3"/>
+            <rect class="servidor" x="-12" y="-26" width="24" height="36" rx="3"/>
+            <rect class="servidor" x="18" y="-26" width="24" height="36" rx="3"/>
+            <path class="servidor-linha" d="M-38,-18 h16 M-8,-18 h16 M22,-18 h16 M-38,-10 h16 M-8,-10 h16 M22,-10 h16"/>
+          </g>
+          <text class="rotulo" x="0" y="28" text-anchor="middle">Aplicação</text>
+        </g>
+
+        <!-- Nó A -->
+        <g id="noA" class="no" transform="translate(150,296)">
+          <ellipse class="cil-topo" cx="0" cy="-42" rx="32" ry="10"/>
+          <path class="cil-corpo" d="M-32,-42 v52 a32,10 0 0 0 64,0 v-52 a32,10 0 0 1 -64,0 z"/>
+          <text class="cil-db" x="0" y="-4" text-anchor="middle">DB</text>
+          <text class="rotulo" x="0" y="42" text-anchor="middle">Nó A · primário</text>
+          <text class="rotulo-2" x="0" y="57" text-anchor="middle">São Paulo</text>
+          <g class="chip-valor" id="chipA">
+            <rect x="-46" y="66" width="92" height="26" rx="13"/>
+            <text id="valorA" x="0" y="83" text-anchor="middle">saldo: —</text>
+          </g>
+        </g>
+
+        <!-- Nó B -->
+        <g id="noB" class="no" transform="translate(490,296)">
+          <ellipse class="cil-topo" cx="0" cy="-42" rx="32" ry="10"/>
+          <path class="cil-corpo" d="M-32,-42 v52 a32,10 0 0 0 64,0 v-52 a32,10 0 0 1 -64,0 z"/>
+          <text class="cil-db" x="0" y="-4" text-anchor="middle">DB</text>
+          <text class="rotulo" x="0" y="42" text-anchor="middle">Nó B · réplica</text>
+          <text class="rotulo-2" x="0" y="57" text-anchor="middle">Frankfurt</text>
+          <g class="chip-valor" id="chipB">
+            <rect x="-46" y="66" width="92" height="26" rx="13"/>
+            <text id="valorB" x="0" y="83" text-anchor="middle">saldo: —</text>
+          </g>
+        </g>
+
+        <!-- aviso de recusa (escolha C) -->
+        <g id="recusa" transform="translate(490,206)">
+          <rect x="-58" y="-14" width="116" height="26" rx="13"/>
+          <text x="0" y="4" text-anchor="middle">✕ sem resposta</text>
+        </g>
+
+        <!-- pacote que viaja pelas linhas -->
+        <circle id="pacote" class="pacote" r="6"/>
+      </svg>
+    </section>
+
+    <aside class="mesa">
+      <div class="mesa-cx placar-cx">
+        <div class="placar">
+          <span class="letra" id="letraC" data-estado="ok"><b>C</b><small>consistência</small></span>
+          <span class="letra" id="letraA" data-estado="ok"><b>A</b><small>disponibilidade</small></span>
+          <span class="letra" id="letraP" data-estado="dormente"><b>P</b><small>partição</small></span>
+        </div>
+      </div>
+      <div class="mesa-cx">
+        <p class="historico" id="historico" hidden></p>
+        <p class="narrador" id="narrador" style="margin-top:12px"></p>
+        <div class="acoes" id="acoes" style="margin-top:16px"></div>
+        <div class="veredito" id="veredito" hidden></div>
+      </div>
+    </aside>
+
+  </div>
+</div>
+
+<footer class="rodape">
+  <div class="env">
+    <p>O desenho é o clássico primário-réplica de propósito: é o menor sistema em que o teorema aparece. Quóruns, mais réplicas e relógios sincronizados mudam os detalhes — não a escolha.</p>
+    <p>Rigor: o CAP fala de <em>consistência linearizável</em> e de disponibilidade de <em>todo</em> nó vivo. As gradações entre os extremos são exatamente o que o questionário mede.</p>
+  </div>
+</footer>
+<script type="module" src="./cap.js"></script>
+</body>
+</html>

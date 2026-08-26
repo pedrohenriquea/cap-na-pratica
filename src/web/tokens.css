@@ -1,0 +1,51 @@
+/* Tokens de design compartilhados entre as páginas (questionário e
+   simulador CAP). Uma fonte só: mudou a paleta, mudou em todo lugar. */
+:root{
+  --fundo:#0B0F1A;
+  --carta:#111726;
+  --carta-2:#0E1420;
+  --plano:#0C111D;
+  --borda:rgba(148,163,207,.13);
+  --borda-forte:rgba(148,163,207,.28);
+  --texto:#E9EDF7;
+  --texto-2:rgba(233,237,247,.68);
+  --texto-3:rgba(233,237,247,.42);
+  --acento:#8B9AFB;
+  --acento-2:#38D5EC;
+  --acento-fundo:rgba(139,154,251,.10);
+  --grad:linear-gradient(120deg,#8B9AFB,#38D5EC);
+  --alvo:#F5B23D;
+  --perigo:#F87E95;
+  --ok:#3DD9A4;
+  --ponto-vivo:#3DD9A4;
+  --ponto-fora:rgba(148,163,207,.35);
+  --sombra:0 12px 40px rgba(2,6,18,.45);
+  --display:"Space Grotesk",system-ui,sans-serif;
+  --corpo:"Inter",system-ui,sans-serif;
+  --dado:"JetBrains Mono",ui-monospace,SFMono-Regular,monospace;
+  --raio:18px;
+  --raio-mini:12px;
+}
+@media (prefers-color-scheme: light){
+  :root{
+    --fundo:#F3F5FB;
+    --carta:#FFFFFF;
+    --carta-2:#F7F9FD;
+    --plano:#FFFFFF;
+    --borda:rgba(15,23,42,.09);
+    --borda-forte:rgba(15,23,42,.20);
+    --texto:#0E1526;
+    --texto-2:rgba(14,21,38,.68);
+    --texto-3:rgba(14,21,38,.44);
+    --acento:#4F5BE7;
+    --acento-2:#0793B4;
+    --acento-fundo:rgba(79,91,231,.07);
+    --grad:linear-gradient(120deg,#4F5BE7,#0793B4);
+    --alvo:#C77E06;
+    --perigo:#DB3A5F;
+    --ok:#0B9E6E;
+    --ponto-vivo:#0B9E6E;
+    --ponto-fora:rgba(15,23,42,.28);
+    --sombra:0 10px 30px rgba(15,23,42,.07);
+  }
+}

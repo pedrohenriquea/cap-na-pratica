@@ -15,35 +15,45 @@ const politica = ler("../../dados/perguntas.json");
  */
 const CASOS = [
   { nome: "liquidação financeira", esperado: "postgres",
-    r: { atomicidade:"multi", invariantes:"banco", skew:"sim", perda:"zero", particao:"errar",
-         leitura:"forte", acesso:"adhoc", formato:"tabular", escala:"vertical", operacao:"minimo" } },
+    r: { atomicidade:"multi", invariantes:"banco", skew:"sim", perda:"zero", geografia:"local",
+         particao:"errar", leitura:"forte", latencia:"tolerante", acesso:"adhoc", formato:"tabular",
+         escala:"vertical", operacao:"minimo" } },
   { nome: "catálogo de produtos", esperado: "mongodb",
-    r: { atomicidade:"agregado", invariantes:"app", skew:"nao", perda:"segundos", particao:"parar",
-         leitura:"lag", acesso:"chave", formato:"documento", escala:"crescente", operacao:"gerenciado" } },
+    r: { atomicidade:"agregado", invariantes:"app", skew:"nao", perda:"segundos", geografia:"local",
+         particao:"parar", leitura:"lag", latencia:"web", acesso:"chave", formato:"documento",
+         escala:"crescente", operacao:"gerenciado" } },
   { nome: "telemetria de dispositivos", esperado: "cassandra",
-    r: { atomicidade:"agregado", invariantes:"app", skew:"nao", perda:"reprocessa", particao:"parar",
-         leitura:"eventual", acesso:"chave", formato:"serie", escala:"horizontal", operacao:"experiente" } },
+    r: { atomicidade:"agregado", invariantes:"app", skew:"nao", perda:"reprocessa", geografia:"local",
+         particao:"parar", leitura:"eventual", latencia:"critico", acesso:"chave", formato:"serie",
+         escala:"horizontal", operacao:"experiente" } },
   { nome: "busca do site", esperado: "elastic",
-    r: { atomicidade:"agregado", invariantes:"app", skew:"nao", perda:"reprocessa", particao:"parar",
-         leitura:"eventual", acesso:"texto", formato:"documento", escala:"crescente", operacao:"gerenciado" } },
+    r: { atomicidade:"agregado", invariantes:"app", skew:"nao", perda:"reprocessa", geografia:"local",
+         particao:"parar", leitura:"eventual", latencia:"critico", acesso:"texto", formato:"documento",
+         escala:"crescente", operacao:"gerenciado" } },
   { nome: "sessão e cache", esperado: "redis",
-    r: { atomicidade:"agregado", invariantes:"app", skew:"nao", perda:"reprocessa", particao:"parar",
-         leitura:"eventual", acesso:"chave", formato:"efemero", escala:"crescente", operacao:"experiente" } },
+    r: { atomicidade:"agregado", invariantes:"app", skew:"nao", perda:"reprocessa", geografia:"local",
+         particao:"parar", leitura:"eventual", latencia:"critico", acesso:"chave", formato:"efemero",
+         escala:"crescente", operacao:"experiente" } },
   { nome: "quadro societário", esperado: "neo4j",
-    r: { atomicidade:"agregado", invariantes:"misto", skew:"nao", perda:"segundos", particao:"tanto",
-         leitura:"lag", acesso:"grafo", formato:"documento", escala:"vertical", operacao:"experiente" } },
+    r: { atomicidade:"agregado", invariantes:"misto", skew:"nao", perda:"segundos", geografia:"local",
+         particao:"tanto", leitura:"lag", latencia:"web", acesso:"grafo", formato:"documento",
+         escala:"vertical", operacao:"experiente" } },
   { nome: "métricas internas", esperado: "timescale",
-    r: { atomicidade:"agregado", invariantes:"app", skew:"nao", perda:"segundos", particao:"tanto",
-         leitura:"lag", acesso:"chave", formato:"serie", escala:"vertical", operacao:"experiente" } },
+    r: { atomicidade:"agregado", invariantes:"app", skew:"nao", perda:"segundos", geografia:"local",
+         particao:"tanto", leitura:"lag", latencia:"web", acesso:"chave", formato:"serie",
+         escala:"vertical", operacao:"experiente" } },
   { nome: "carrinho global de e-commerce", esperado: "dynamodb",
-    r: { atomicidade:"agregado", invariantes:"app", skew:"nao", perda:"segundos", particao:"parar",
-         leitura:"lag", acesso:"chave", formato:"efemero", escala:"horizontal", operacao:"gerenciado" } },
+    r: { atomicidade:"agregado", invariantes:"app", skew:"nao", perda:"segundos", geografia:"escrita-global",
+         particao:"parar", leitura:"lag", latencia:"critico", acesso:"chave", formato:"efemero",
+         escala:"horizontal", operacao:"gerenciado" } },
   { nome: "CRUD interno simples", esperado: "postgres",
-    r: { atomicidade:"multi", invariantes:"banco", skew:"nao", perda:"segundos", particao:"tanto",
-         leitura:"forte", acesso:"adhoc", formato:"tabular", escala:"vertical", operacao:"minimo" } },
+    r: { atomicidade:"multi", invariantes:"banco", skew:"nao", perda:"segundos", geografia:"local",
+         particao:"tanto", leitura:"forte", latencia:"tolerante", acesso:"adhoc", formato:"tabular",
+         escala:"vertical", operacao:"minimo" } },
   { nome: "ledger multirregião", esperado: "cockroach",
-    r: { atomicidade:"multi", invariantes:"banco", skew:"sim", perda:"zero", particao:"errar",
-         leitura:"forte", acesso:"adhoc", formato:"tabular", escala:"horizontal", operacao:"gerenciado" } }
+    r: { atomicidade:"multi", invariantes:"banco", skew:"sim", perda:"zero", geografia:"escrita-global",
+         particao:"errar", leitura:"forte", latencia:"tolerante", acesso:"adhoc", formato:"tabular",
+         escala:"horizontal", operacao:"gerenciado" } }
 ];
 
 describe("casos-âncora", () => {
@@ -127,6 +137,22 @@ describe("invariantes do motor", () => {
     assert.throws(() => avaliar(base, politica, { atomicidade: "nao-existe" }),
       /resposta inválida/);
   });
+
+  test("toda pergunta pertence a um grupo declarado (tópico do CAP/PACELC)", () => {
+    const ids = new Set((politica.grupos || []).map(g => g.id));
+    assert.ok(ids.size > 0, "política sem grupos declarados");
+    for (const q of politica.perguntas)
+      assert.ok(ids.has(q.grupo), `pergunta ${q.id} sem grupo válido: "${q.grupo}"`);
+    for (const g of politica.grupos)
+      assert.ok(g.selo && g.titulo && g.descricao, `grupo ${g.id} sem selo/título/descrição`);
+  });
+
+  test("duas perguntas no mesmo eixo PACELC viram média, não sobrescrita", () => {
+    // read-your-writes forte (e=0.92) + latência crítica (e=0.15) → meio-termo
+    const { alvo } = avaliar(base, politica, { leitura: "forte", latencia: "critico" });
+    assert.equal(alvo.e, +((0.92 + 0.15) / 2).toFixed(3));
+    assert.equal(alvo.p, 0.5, "eixo sem contribuição fica no neutro");
+  });
 });
 
 describe("robustez da política", () => {
@@ -179,8 +205,9 @@ describe("casos adversariais — pares em disputa real", () => {
    */
   const PARES = [
     { nome: "checkout de e-commerce", topo: ["cockroach", "postgres"],
-      r: { atomicidade:"multi", invariantes:"banco", skew:"nao", perda:"zero", particao:"errar",
-           leitura:"forte", acesso:"adhoc", formato:"tabular", escala:"crescente", operacao:"gerenciado" } }
+      r: { atomicidade:"multi", invariantes:"banco", skew:"nao", perda:"zero", geografia:"leitura-global",
+           particao:"errar", leitura:"forte", latencia:"tolerante", acesso:"adhoc", formato:"tabular",
+           escala:"crescente", operacao:"gerenciado" } }
   ];
   for (const c of PARES) {
     test(c.nome, () => {

@@ -24,8 +24,22 @@ try {
 
 el("versaoBase").textContent = "base " + BASE.versaoBase + " · política " + POLITICA.versaoPolitica;
 
-/* ─────────── perguntas ─────────── */
+/* ─────────── perguntas, agrupadas por tópico do CAP/PACELC ─────────── */
+const grupos = new Map((POLITICA.grupos || []).map(g => [g.id, g]));
+let grupoAtual = null;
 POLITICA.perguntas.forEach((q, i) => {
+  if (q.grupo && q.grupo !== grupoAtual && grupos.has(q.grupo)) {
+    grupoAtual = q.grupo;
+    const g = grupos.get(q.grupo);
+    const cab = document.createElement("div");
+    cab.className = "grupo-cab";
+    cab.innerHTML =
+      '<span class="grupo-selo">' + g.selo + "</span>" +
+      '<div><h2 class="grupo-tit">' + g.titulo + "</h2>" +
+      '<p class="grupo-desc">' + g.descricao + "</p></div>";
+    el("form").appendChild(cab);
+  }
+
   const bloco = document.createElement("fieldset");
   bloco.className = "q";
 
@@ -97,7 +111,9 @@ function render() {
   const total = POLITICA.perguntas.length;
   const feitas = Object.keys(respostas).length;
   el("contador").textContent = feitas + " de " + total + " respondidas";
-  el("barraFill").style.width = (feitas / total * 100) + "%";
+  const pct = (feitas / total * 100) + "%";
+  el("barraFill").style.width = pct;   // barra fixa no topo da página
+  el("barraLocal").style.width = pct;  // barra ao lado do contador
 
   const res = avaliar(BASE, POLITICA, respostas);
 
@@ -111,7 +127,7 @@ function render() {
   el("pontos").querySelectorAll("g").forEach(g => {
     const fora = bloqueados.has(g.dataset.id);
     const c = g.querySelector("circle");
-    c.setAttribute("fill", fora ? "var(--linha-forte)" : "var(--verdete)");
+    c.setAttribute("fill", fora ? "var(--ponto-fora)" : "var(--ponto-vivo)");
     c.setAttribute("r", g.dataset.id === lider && feitas === total ? "3.2" : "1.9");
     g.setAttribute("opacity", fora ? ".4" : "1");
   });
@@ -162,7 +178,7 @@ function pintar(res, sens) {
       `<div class="pos-rank">${i + 1}</div>` +
       `<div><h3>${b.nome} <span class="versao">${b.versaoAvaliada}</span></h3>` +
       `<p class="pos-fam">${b.familia}</p><ul class="pos-razoes">${pros}${perdas}</ul>${avisos}</div>` +
-      `<div class="pos-med"><b>${b.pontos}</b>de 100</div>`;
+      `<div class="pos-med"><b>${b.pontos}</b>de 100<span class="medidor"><i style="width:${b.pontos}%"></i></span></div>`;
     el("ranking").appendChild(art);
   });
 

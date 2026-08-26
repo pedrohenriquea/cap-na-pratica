@@ -31,12 +31,19 @@ export function avaliar(base, politica, respostas) {
   const { escalas, bancos } = base;
   const { severidades, pesoDistanciaPacelc, perguntas } = politica;
 
-  // 1. alvo PACELC derivado das respostas
-  const alvo = { p: 0.5, e: 0.5 };
+  // 1. alvo PACELC derivado das respostas. Mais de uma pergunta pode puxar o
+  //    mesmo eixo (read-your-writes e latência puxam `e`); o alvo é a média
+  //    das contribuições — tensão entre respostas vira meio-termo, não
+  //    sobrescrita silenciosa da última.
+  const contribs = { p: [], e: [] };
   for (const q of perguntas) {
     const o = q.opcoes.find(x => x.id === respostas[q.id]);
-    if (o && o.pacelc) Object.assign(alvo, o.pacelc);
+    if (!o || !o.pacelc) continue;
+    if (o.pacelc.p !== undefined) contribs.p.push(o.pacelc.p);
+    if (o.pacelc.e !== undefined) contribs.e.push(o.pacelc.e);
   }
+  const media = xs => xs.length ? xs.reduce((s, x) => s + x, 0) / xs.length : 0.5;
+  const alvo = { p: +media(contribs.p).toFixed(3), e: +media(contribs.e).toFixed(3) };
 
   // 2. candidatos derivados (extensões) só entram se a necessidade que os
   //    justifica existir. Sem isso, o superconjunto vence o banco base sempre.

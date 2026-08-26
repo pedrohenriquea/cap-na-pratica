@@ -1,12 +1,12 @@
 {
-  "name": "seletor-de-banco",
+  "name": "cap-na-pratica",
   "version": "2.0.0",
-  "description": "Questionário sobre o domínio que devolve um ranking de bancos de dados, a trilha de como cada ponto foi perdido e um ADR pronto para o repositório.",
+  "description": "Qual banco de dados, e por quê. Doze perguntas sobre o seu sistema viram um ranking explicado por CAP/PACELC, análise de sensibilidade e um ADR pronto — mais um simulador jogável do teorema. Zero dependências.",
   "type": "module",
   "private": true,
   "scripts": {
     "start": "node scripts/servidor.js",
-    "test": "node --test src/motor/motor.test.js"
+    "test": "node --test src/motor/ src/web/"
   },
   "engines": { "node": ">=20" }
 }

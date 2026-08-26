@@ -1,5 +1,5 @@
 {
-  "versaoPolitica": "2026-08-23",
+  "versaoPolitica": "2026-08-26",
   "severidades": {
     "bloqueante": null,
     "grave": 30,
@@ -7,9 +7,36 @@
     "leve": 5
   },
   "pesoDistanciaPacelc": 25,
+  "grupos": [
+    {
+      "id": "consistencia",
+      "selo": "CAP · C",
+      "titulo": "Consistência",
+      "descricao": "O C do CAP: o que o banco promete sobre o dado estar certo — gravação atômica, integridade e o que acontece quando duas gravações se cruzam."
+    },
+    {
+      "id": "particao",
+      "selo": "CAP · A e P",
+      "titulo": "Disponibilidade e partição",
+      "descricao": "O A e o P do CAP: qual a chance de a rede separar as cópias na sua topologia — e, quando separar, o sistema segue no ar ou para?"
+    },
+    {
+      "id": "else",
+      "selo": "PACELC · ELC",
+      "titulo": "O dia a dia sem falha",
+      "descricao": "O else do PACELC: mesmo sem partição nenhuma, o banco escolhe o tempo todo entre responder mais rápido e responder o dado mais atual."
+    },
+    {
+      "id": "alem",
+      "selo": "Fora do teorema",
+      "titulo": "O que o CAP não cobre",
+      "descricao": "Consulta, formato, escala e operação: nada disso aparece no teorema — e é o que decide a maioria dos casos reais."
+    }
+  ],
   "perguntas": [
     {
       "id": "atomicidade",
+      "grupo": "consistencia",
       "termo": "atomicidade",
       "titulo": "Quando o sistema salva, quantos registros mudam de uma vez?",
       "ajuda": "Pense na gravação mais importante do sistema. Se ela falhar no meio, nada pode ficar salvo pela metade — e garantir isso é fácil dentro de um registro, difícil entre vários.",
@@ -61,6 +88,7 @@
     },
     {
       "id": "invariantes",
+      "grupo": "consistencia",
       "termo": "integridade",
       "titulo": "Quem barra um dado inválido: o banco ou o seu código?",
       "ajuda": "Inválido assim: dois cadastros com o mesmo CPF, ou um pedido apontando para um cliente que não existe.",
@@ -109,6 +137,7 @@
     },
     {
       "id": "skew",
+      "grupo": "consistencia",
       "termo": "write skew",
       "titulo": "Existe regra do tipo “no máximo N” ou “pelo menos um”, contando vários registros?",
       "ajuda": "O caso clássico: “pelo menos um médico de plantão”. Dois pedem folga no mesmo segundo, cada um olha e vê o outro de plantão, os dois saem — a regra quebrou sem nenhum registro estar errado sozinho.",
@@ -152,6 +181,7 @@
     },
     {
       "id": "perda",
+      "grupo": "consistencia",
       "termo": "durabilidade",
       "titulo": "Se o banco cair agora, pode perder os últimos segundos de gravação?",
       "ajuda": "Todo banco mantém cópias. Confirmar cada gravação na cópia antes de responder é seguro, porém mais lento; deixar a cópia se atualizar depois é rápido, mas o que estava no caminho se perde na queda.",
@@ -193,10 +223,54 @@
       ]
     },
     {
+      "id": "geografia",
+      "grupo": "particao",
+      "termo": "tolerância a partição",
+      "titulo": "Onde ficam os usuários e as cópias do dado?",
+      "ajuda": "É o P do CAP virando pergunta de projeto: num datacenter só, partição é acidente raro; entre regiões, é rotina — e a resposta da pergunta seguinte passa a valer todo dia.",
+      "opcoes": [
+        {
+          "id": "local",
+          "texto": "Tudo numa região ou datacenter só",
+          "exemplo": "sistema interno, SaaS atendendo um país",
+          "requisitos": []
+        },
+        {
+          "id": "leitura-global",
+          "texto": "Usuários espalhados, mas a escrita concentrada numa região",
+          "exemplo": "conteúdo lido no mundo todo, editado por um time só",
+          "requisitos": [
+            {
+              "cap": "distribuicao",
+              "op": "min",
+              "valor": "manual",
+              "sev": "moderado",
+              "motivo": "não tem caminho pronto para aproximar cópias de leitura dos usuários"
+            }
+          ]
+        },
+        {
+          "id": "escrita-global",
+          "texto": "Gravação em várias regiões ao mesmo tempo",
+          "exemplo": "o usuário grava em São Paulo e em Frankfurt, e os dois enxergam tudo",
+          "requisitos": [
+            {
+              "cap": "distribuicao",
+              "op": "min",
+              "valor": "nativa",
+              "sev": "bloqueante",
+              "motivo": "não coordena gravação entre regiões sem trabalho manual pesado"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "id": "particao",
+      "grupo": "particao",
       "termo": "teorema CAP",
       "titulo": "Se a rede entre as cópias do banco falhar, o sistema para ou segue no ar?",
-      "ajuda": "Esta é a pergunta do teorema CAP. Com as cópias sem se enxergar, não dá para ter os dois: ou o sistema recusa operações até a rede voltar, ou segue no ar sabendo que pode responder dado desatualizado.",
+      "ajuda": "Esta é a pergunta central do teorema CAP. Com as cópias sem se enxergar, não dá para ter os dois: ou o sistema recusa operações até a rede voltar (escolhe C), ou segue no ar sabendo que pode responder dado desatualizado (escolhe A).",
       "opcoes": [
         {
           "id": "errar",
@@ -229,6 +303,7 @@
     },
     {
       "id": "leitura",
+      "grupo": "else",
       "termo": "read-your-writes",
       "titulo": "Depois de salvar, o usuário precisa ver a mudança na hora?",
       "ajuda": "Ler de uma cópia é mais rápido e alivia o banco principal — mas a cópia costuma estar alguns instantes atrás.",
@@ -277,7 +352,44 @@
       ]
     },
     {
+      "id": "latencia",
+      "grupo": "else",
+      "termo": "latência",
+      "titulo": "Quanto a resposta pode demorar, na operação mais comum?",
+      "ajuda": "É o L do PACELC. Garantir o dado mais atual em toda resposta custa uma ida a mais às réplicas; abrir mão disso compra velocidade. Aqui você diz quanto essa velocidade importa.",
+      "opcoes": [
+        {
+          "id": "critico",
+          "texto": "Milissegundos — qualquer atraso aparece",
+          "exemplo": "autocomplete, página de produto, cache, jogo",
+          "pacelc": {
+            "e": 0.15
+          },
+          "requisitos": []
+        },
+        {
+          "id": "web",
+          "texto": "Tempo normal de página: dezenas de milissegundos",
+          "exemplo": "tela de sistema, formulário, listagem",
+          "pacelc": {
+            "e": 0.5
+          },
+          "requisitos": []
+        },
+        {
+          "id": "tolerante",
+          "texto": "Pode levar mais — vale mais estar certo que ser rápido",
+          "exemplo": "confirmação de pagamento, fechamento, relatório",
+          "pacelc": {
+            "e": 0.8
+          },
+          "requisitos": []
+        }
+      ]
+    },
+    {
       "id": "acesso",
+      "grupo": "alem",
       "termo": "padrão de acesso",
       "titulo": "Como o sistema vai encontrar esse dado depois?",
       "ajuda": "Isso pesa mais na escolha do que o formato em que o dado é guardado.",
@@ -355,6 +467,7 @@
     },
     {
       "id": "formato",
+      "grupo": "alem",
       "termo": "modelo de dados",
       "titulo": "Como esse dado se organiza?",
       "opcoes": [
@@ -432,6 +545,7 @@
     },
     {
       "id": "escala",
+      "grupo": "alem",
       "termo": "escala de escrita",
       "titulo": "Quantas gravações por segundo, de verdade?",
       "ajuda": "Use o número de hoje multiplicado por três, não o do slide para investidor. A maioria dos sistemas corporativos nunca sai da primeira faixa.",
@@ -490,6 +604,7 @@
     },
     {
       "id": "operacao",
+      "grupo": "alem",
       "termo": "custo operacional",
       "titulo": "Quem cuida disso quando quebrar de madrugada?",
       "ajuda": "É o critério que mais elimina candidato na vida real, e o que menos aparece nas comparações técnicas.",

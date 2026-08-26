@@ -36,5 +36,5 @@ createServer(async (req, res) => {
     res.end("não encontrado: " + caminho);
   }
 }).listen(PORTA, () => {
-  console.log(`\n  seletor de banco  →  http://localhost:${PORTA}\n`);
+  console.log(`\n  CAP na prática  →  http://localhost:${PORTA}\n`);
 });
