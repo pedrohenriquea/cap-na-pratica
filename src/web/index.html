@@ -136,6 +136,23 @@ svg.plano{width:100%;height:auto;display:block;border-radius:10px}
 .chave-alvo{background:var(--alvo)}
 .chave-cand{background:var(--ponto-vivo)}
 .chave-fora{background:var(--ponto-fora)}
+.chave-unico{background:var(--plano);border:1.5px solid var(--ponto-vivo)}
+.opcoes.compacta{grid-template-columns:1fr 1fr}
+@media (max-width:640px){.opcoes.compacta{grid-template-columns:1fr}}
+.res-nota{margin:6px 0 0;font-size:14px;color:var(--texto-3);max-width:60ch}
+.robustez{
+  border:1px solid var(--borda);border-left:3px solid var(--ok);border-radius:var(--raio-mini);
+  background:var(--carta);padding:14px 18px;margin:0 0 24px;font-size:14px;color:var(--texto-2)
+}
+.robustez b{color:var(--texto)}
+.robustez i{font-family:var(--dado);font-style:normal;font-size:12.5px;color:var(--texto)}
+.robustez.fragil{border-left-color:var(--alvo)}
+.faixa{
+  display:inline-block;vertical-align:middle;font-family:var(--dado);font-size:11px;font-weight:500;letter-spacing:.03em;
+  border-radius:999px;padding:2px 10px;margin-left:6px;border:1px solid var(--borda-forte);color:var(--texto-2)
+}
+.faixa-forte{color:var(--ok);border-color:var(--ok)}
+.faixa-ressalvas{color:var(--alvo);border-color:var(--alvo)}
 .mapa-bancos{
   margin:12px 0 0;padding:12px 0 0;border-top:1px solid var(--borda);list-style:none;
   display:grid;grid-template-columns:1fr 1fr;gap:5px 14px;font-family:var(--dado);font-size:11px;color:var(--texto-2)
@@ -262,7 +279,7 @@ pre.md{
   <div class="env">
     <p class="sobrancelha">CAP na prática · CAP + PACELC</p>
     <h1>Qual banco, e <em>por quê</em>.</h1>
-    <p class="lede">Doze perguntas sobre <b>o que você está construindo</b> — nenhuma sobre banco de dados —, organizadas pelos eixos do <b>teorema CAP</b> e do <b>PACELC</b>. Não precisa saber a resposta técnica: cada pergunta vem com um exemplo. No fim sai um ranking, o motivo de cada descarte e um <b>registro de decisão pronto para colar no repositório</b>. Nada sai do seu navegador.</p>
+    <p class="lede">Catorze perguntas sobre <b>o que você está construindo</b> — nenhuma sobre banco de dados —, organizadas pelos eixos do <b>teorema CAP</b> e do <b>PACELC</b>. Não precisa saber a resposta técnica: cada pergunta vem com um exemplo. No fim sai um ranking, o motivo de cada descarte, o quanto o resultado aguenta mudar os pesos, e um <b>registro de decisão pronto para colar no repositório</b>. Nada sai do seu navegador.</p>
   </div>
 </header>
 
@@ -270,7 +287,7 @@ pre.md{
   <div class="trabalho">
 
     <main>
-      <p class="progresso"><span id="contador">0 de 12 respondidas</span><span class="barra"><i id="barraLocal"></i></span></p>
+      <p class="progresso"><span id="contador">0 de 14 respondidas</span><span class="barra"><i id="barraLocal"></i></span></p>
       <form id="form"></form>
     </main>
 
@@ -297,6 +314,7 @@ pre.md{
           <span><i class="chave-alvo"></i>seu requisito</span>
           <span><i class="chave-cand"></i>candidato vivo</span>
           <span><i class="chave-fora"></i>eliminado</span>
+          <span><i class="chave-unico"></i>nó único: P por convenção</span>
         </p>
         <ol class="mapa-bancos" id="mapaBancos"></ol>
         <details class="painel-nota">
@@ -318,11 +336,15 @@ pre.md{
 <section class="resultado" id="resultado" hidden>
   <div class="env">
     <div class="res-cab">
-      <h2>O que sobra</h2>
+      <div>
+        <h2>O que sobra</h2>
+        <p class="res-nota">A pontuação é ordem, não medida: diferença abaixo de dez pontos é ruído do modelo.</p>
+      </div>
       <button class="acao fantasma" id="btnReset" type="button">Recomeçar</button>
     </div>
 
     <p class="aviso-margem" id="avisoMargem" hidden></p>
+    <p class="robustez" id="robustez" hidden></p>
     <div id="ranking"></div>
 
     <div class="painel-sec h-fora" id="blocoFora" hidden>

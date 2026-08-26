@@ -1,5 +1,5 @@
 {
-  "versaoBase": "2026-08-23",
+  "versaoBase": "2026-08-26",
   "escalas": {
     "transacao": [
       "nenhuma",
@@ -53,12 +53,17 @@
       "monolitica"
     ]
   },
+  "faixasPacelc": {
+    "p": { "PA": [0, 0.3], "ajustavel": [0.3, 0.75], "PC": [0.75, 1] },
+    "e": { "EL": [0, 0.3], "ajustavel": [0.3, 0.75], "EC": [0.75, 1] }
+  },
   "bancos": [
     {
       "id": "postgres",
       "nome": "PostgreSQL",
       "familia": "Relacional · MVCC",
       "versaoAvaliada": "16",
+      "noUnico": true,
       "caps": {
         "transacao": "global",
         "isolamento": "serializavel",
@@ -72,6 +77,7 @@
         "leitura": "forte",
         "durabilidadeSincrona": true,
         "gerenciado": true,
+        "autoHospedado": true,
         "custoOp": "medio",
         "efemeroOk": false,
         "fonteVerdade": true,
@@ -79,6 +85,11 @@
         "p": 0.86,
         "e": 0.95,
         "arquitetura": "monolitica"
+      },
+      "pacelc": {
+        "p": "PC",
+        "e": "EC",
+        "motivo": "nó único: isolado pela rede, simplesmente fica indisponível — o comportamento do lado PC, por convenção. Leitura na primária é sempre atual; réplica é assíncrona por padrão, síncrona por configuração."
       },
       "ressalvas": {
         "isolamento": "Serializable usa SSI: aborta a transação com 40001, exige retry na aplicação",
@@ -104,6 +115,7 @@
         "leitura": "forte",
         "durabilidadeSincrona": true,
         "gerenciado": true,
+        "autoHospedado": true,
         "custoOp": "medio",
         "efemeroOk": false,
         "fonteVerdade": true,
@@ -111,6 +123,11 @@
         "p": 0.95,
         "e": 0.94,
         "arquitetura": "distribuida"
+      },
+      "pacelc": {
+        "p": "PC",
+        "e": "EC",
+        "motivo": "consenso Raft por faixa de chaves: a escrita só confirma com maioria (PC) e toda transação é serializável (EC). Paga latência de consenso mesmo sem falha."
       },
       "ressalvas": {
         "leitura": "latência de escrita paga consenso entre réplicas mesmo sem contenção"
@@ -121,6 +138,7 @@
       "nome": "MySQL / MariaDB",
       "familia": "Relacional",
       "versaoAvaliada": "8 (InnoDB)",
+      "noUnico": true,
       "caps": {
         "transacao": "global",
         "isolamento": "serializavel",
@@ -134,6 +152,7 @@
         "leitura": "forte",
         "durabilidadeSincrona": true,
         "gerenciado": true,
+        "autoHospedado": true,
         "custoOp": "medio",
         "efemeroOk": false,
         "fonteVerdade": true,
@@ -141,6 +160,11 @@
         "p": 0.8,
         "e": 0.88,
         "arquitetura": "monolitica"
+      },
+      "pacelc": {
+        "p": "PC",
+        "e": "EC",
+        "motivo": "nó único (PC por convenção) com replicação assíncrona por padrão; semi-síncrona é opcional. Leitura na primária é atual."
       },
       "ressalvas": {
         "isolamento": "Serializable é por bloqueio, não por detecção de conflito: derruba throughput sob contenção"
@@ -164,6 +188,7 @@
         "leitura": "ajustavel",
         "durabilidadeSincrona": true,
         "gerenciado": true,
+        "autoHospedado": true,
         "custoOp": "medio",
         "efemeroOk": false,
         "fonteVerdade": true,
@@ -171,6 +196,11 @@
         "p": 0.68,
         "e": 0.78,
         "arquitetura": "distribuida"
+      },
+      "pacelc": {
+        "p": "ajustavel",
+        "e": "EC",
+        "motivo": "replica set com eleição: na partição, o lado sem maioria para de gravar (tende a PC), mas readPreference e readConcern movem o ponto por operação. Por padrão lê da primária (EC)."
       },
       "ressalvas": {
         "transacao": "transação multi-documento existe desde a 4.0, mas custa caro e vai contra o modelo",
@@ -197,6 +227,7 @@
         "leitura": "ajustavel",
         "durabilidadeSincrona": true,
         "gerenciado": true,
+        "autoHospedado": false,
         "custoOp": "baixo",
         "efemeroOk": true,
         "fonteVerdade": true,
@@ -205,10 +236,16 @@
         "e": 0.34,
         "arquitetura": "distribuida"
       },
+      "pacelc": {
+        "p": "ajustavel",
+        "e": "ajustavel",
+        "motivo": "Abadi (2012) o classificou PA/EL. Hoje leitura fortemente consistente e transação existem sob demanda — por padrão continua eventual e rápido, e é assim que a maioria o usa."
+      },
       "ressalvas": {
         "transacao": "TransactWriteItems limita a 100 itens e não faz rollback parcial",
         "adhoc": "consulta só pela chave ou por índice secundário criado de antemão",
-        "unicidade": "só a chave primária é única; qualquer outro campo não"
+        "unicidade": "só a chave primária é única; qualquer outro campo não",
+        "autoHospedado": "só existe na AWS; o DynamoDB Local serve para teste, não para produção"
       }
     },
     {
@@ -229,6 +266,7 @@
         "leitura": "ajustavel",
         "durabilidadeSincrona": true,
         "gerenciado": true,
+        "autoHospedado": true,
         "custoOp": "alto",
         "efemeroOk": false,
         "fonteVerdade": true,
@@ -236,6 +274,11 @@
         "p": 0.16,
         "e": 0.14,
         "arquitetura": "distribuida"
+      },
+      "pacelc": {
+        "p": "PA",
+        "e": "EL",
+        "motivo": "sem primário: qualquer nó vivo responde (PA) e, com o nível de consistência padrão, sem esperar os outros (EL). QUORUM em cada operação move o ponto — ao custo de latência."
       },
       "ressalvas": {
         "adhoc": "a tabela é modelada a partir da consulta; consulta nova costuma significar tabela nova",
@@ -260,6 +303,7 @@
         "leitura": "ajustavel",
         "durabilidadeSincrona": false,
         "gerenciado": true,
+        "autoHospedado": true,
         "custoOp": "baixo",
         "efemeroOk": true,
         "fonteVerdade": false,
@@ -267,6 +311,11 @@
         "p": 0.22,
         "e": 0.06,
         "arquitetura": "distribuida"
+      },
+      "pacelc": {
+        "p": "PA",
+        "e": "EL",
+        "motivo": "replicação assíncrona: réplica isolada continua servindo dado velho (PA). Latência é o produto — nada espera ninguém (EL)."
       },
       "ressalvas": {
         "transacao": "MULTI/EXEC não desfaz o que já executou; não é rollback",
@@ -278,6 +327,7 @@
       "nome": "Neo4j",
       "familia": "Grafo",
       "versaoAvaliada": "5",
+      "noUnico": true,
       "caps": {
         "transacao": "global",
         "isolamento": "read-committed",
@@ -291,6 +341,7 @@
         "leitura": "forte",
         "durabilidadeSincrona": true,
         "gerenciado": true,
+        "autoHospedado": true,
         "custoOp": "alto",
         "efemeroOk": false,
         "fonteVerdade": true,
@@ -298,6 +349,11 @@
         "p": 0.78,
         "e": 0.86,
         "arquitetura": "monolitica"
+      },
+      "pacelc": {
+        "p": "PC",
+        "e": "EC",
+        "motivo": "nó único na edição community (PC por convenção); o cluster da edição enterprise usa Raft e confirma com maioria. Leitura no líder é atual."
       },
       "ressalvas": {
         "isolamento": "read-committed por padrão; write skew exige lock explícito no Cypher",
@@ -309,6 +365,7 @@
       "nome": "TimescaleDB",
       "familia": "Série temporal sobre PostgreSQL",
       "versaoAvaliada": "2.x",
+      "noUnico": true,
       "caps": {
         "transacao": "global",
         "isolamento": "serializavel",
@@ -322,6 +379,7 @@
         "leitura": "forte",
         "durabilidadeSincrona": true,
         "gerenciado": true,
+        "autoHospedado": true,
         "custoOp": "medio",
         "efemeroOk": false,
         "fonteVerdade": true,
@@ -329,6 +387,11 @@
         "p": 0.84,
         "e": 0.9,
         "arquitetura": "monolitica"
+      },
+      "pacelc": {
+        "p": "PC",
+        "e": "EC",
+        "motivo": "herda o comportamento do PostgreSQL: é uma extensão, não outro sistema."
       },
       "ressalvas": {
         "papel": "é extensão do Postgres: não conta como um segundo datastore no inventário"
@@ -360,6 +423,7 @@
         "leitura": "eventual",
         "durabilidadeSincrona": false,
         "gerenciado": true,
+        "autoHospedado": true,
         "custoOp": "alto",
         "efemeroOk": false,
         "fonteVerdade": false,
@@ -367,6 +431,11 @@
         "p": 0.3,
         "e": 0.22,
         "arquitetura": "distribuida"
+      },
+      "pacelc": {
+        "p": "PA",
+        "e": "EL",
+        "motivo": "refresh de 1s e réplicas assíncronas: leitura é eventual por desenho (EL). Shard sem quórum continua respondendo busca (PA)."
       },
       "ressalvas": {
         "papel": "índice alimentado por outro banco; não é a fonte da verdade",

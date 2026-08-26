@@ -1,12 +1,16 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { avaliar, sensibilidade, consolidar, porQueVenceu } from "./motor.js";
+import {
+  avaliar, sensibilidade, consolidar, porQueVenceu,
+  expandirPolitica, capsDe, variacoesDePeso, robustez, faixa
+} from "./motor.js";
 import { posicionarNumeros } from "../web/plano.js";
 
 const ler = p => JSON.parse(readFileSync(new URL(p, import.meta.url), "utf-8"));
 const base = ler("../../dados/bancos.json");
 const politica = ler("../../dados/perguntas.json");
+const expandida = expandirPolitica(base, politica);
 
 /**
  * Casos-âncora: cada um tem um vencedor que um engenheiro sênior defenderia
@@ -17,43 +21,48 @@ const CASOS = [
   { nome: "liquidação financeira", esperado: "postgres",
     r: { atomicidade:"multi", invariantes:"banco", skew:"sim", perda:"zero", geografia:"local",
          particao:"errar", leitura:"forte", latencia:"tolerante", acesso:"adhoc", formato:"tabular",
-         escala:"vertical", operacao:"minimo" } },
+         escala:"vertical", operacao:"minimo", hospedagem:"nuvem", incumbente:"nenhum" } },
   { nome: "catálogo de produtos", esperado: "mongodb",
     r: { atomicidade:"agregado", invariantes:"app", skew:"nao", perda:"segundos", geografia:"local",
          particao:"parar", leitura:"lag", latencia:"web", acesso:"chave", formato:"documento",
-         escala:"crescente", operacao:"gerenciado" } },
+         escala:"crescente", operacao:"gerenciado", hospedagem:"nuvem", incumbente:"nenhum" } },
   { nome: "telemetria de dispositivos", esperado: "cassandra",
     r: { atomicidade:"agregado", invariantes:"app", skew:"nao", perda:"reprocessa", geografia:"local",
          particao:"parar", leitura:"eventual", latencia:"critico", acesso:"chave", formato:"serie",
-         escala:"horizontal", operacao:"experiente" } },
+         escala:"horizontal", operacao:"experiente", hospedagem:"nuvem", incumbente:"nenhum" } },
   { nome: "busca do site", esperado: "elastic",
     r: { atomicidade:"agregado", invariantes:"app", skew:"nao", perda:"reprocessa", geografia:"local",
          particao:"parar", leitura:"eventual", latencia:"critico", acesso:"texto", formato:"documento",
-         escala:"crescente", operacao:"gerenciado" } },
+         escala:"crescente", operacao:"gerenciado", hospedagem:"nuvem", incumbente:"nenhum" } },
   { nome: "sessão e cache", esperado: "redis",
     r: { atomicidade:"agregado", invariantes:"app", skew:"nao", perda:"reprocessa", geografia:"local",
          particao:"parar", leitura:"eventual", latencia:"critico", acesso:"chave", formato:"efemero",
-         escala:"crescente", operacao:"experiente" } },
+         escala:"crescente", operacao:"experiente", hospedagem:"nuvem", incumbente:"nenhum" } },
   { nome: "quadro societário", esperado: "neo4j",
     r: { atomicidade:"agregado", invariantes:"misto", skew:"nao", perda:"segundos", geografia:"local",
          particao:"tanto", leitura:"lag", latencia:"web", acesso:"grafo", formato:"documento",
-         escala:"vertical", operacao:"experiente" } },
+         escala:"vertical", operacao:"experiente", hospedagem:"nuvem", incumbente:"nenhum" } },
   { nome: "métricas internas", esperado: "timescale",
     r: { atomicidade:"agregado", invariantes:"app", skew:"nao", perda:"segundos", geografia:"local",
          particao:"tanto", leitura:"lag", latencia:"web", acesso:"chave", formato:"serie",
-         escala:"vertical", operacao:"experiente" } },
+         escala:"vertical", operacao:"experiente", hospedagem:"nuvem", incumbente:"nenhum" } },
   { nome: "carrinho global de e-commerce", esperado: "dynamodb",
     r: { atomicidade:"agregado", invariantes:"app", skew:"nao", perda:"segundos", geografia:"escrita-global",
          particao:"parar", leitura:"lag", latencia:"critico", acesso:"chave", formato:"efemero",
-         escala:"horizontal", operacao:"gerenciado" } },
+         escala:"horizontal", operacao:"gerenciado", hospedagem:"nuvem", incumbente:"nenhum" } },
   { nome: "CRUD interno simples", esperado: "postgres",
     r: { atomicidade:"multi", invariantes:"banco", skew:"nao", perda:"segundos", geografia:"local",
          particao:"tanto", leitura:"forte", latencia:"tolerante", acesso:"adhoc", formato:"tabular",
-         escala:"vertical", operacao:"minimo" } },
+         escala:"vertical", operacao:"minimo", hospedagem:"nuvem", incumbente:"nenhum" } },
   { nome: "ledger multirregião", esperado: "cockroach",
     r: { atomicidade:"multi", invariantes:"banco", skew:"sim", perda:"zero", geografia:"escrita-global",
          particao:"errar", leitura:"forte", latencia:"tolerante", acesso:"adhoc", formato:"tabular",
-         escala:"horizontal", operacao:"gerenciado" } }
+         escala:"horizontal", operacao:"gerenciado", hospedagem:"nuvem", incumbente:"nenhum" } },
+  // o incumbente decide o empate técnico: o mesmo CRUD, numa casa que já opera MySQL
+  { nome: "CRUD interno numa casa MySQL", esperado: "mysql",
+    r: { atomicidade:"multi", invariantes:"banco", skew:"nao", perda:"segundos", geografia:"local",
+         particao:"tanto", leitura:"forte", latencia:"tolerante", acesso:"adhoc", formato:"tabular",
+         escala:"vertical", operacao:"minimo", hospedagem:"nuvem", incumbente:"mysql" } }
 ];
 
 describe("casos-âncora", () => {
@@ -66,21 +75,28 @@ describe("casos-âncora", () => {
         `(top3: ${viaveis.slice(0,3).map(v => v.id + ":" + v.pontos).join(", ")})`);
     });
   }
+
+  test("todo âncora responde todas as perguntas — o que o usuário vê é o que o teste vigia", () => {
+    const ids = politica.perguntas.map(q => q.id);
+    for (const c of CASOS)
+      for (const id of ids)
+        assert.ok(c.r[id], `âncora "${c.nome}" não responde ${id}`);
+  });
 });
 
 describe("invariantes do motor", () => {
   test("toda base declara todas as capacidades usadas na política", () => {
     const usadas = new Set();
-    for (const q of politica.perguntas)
+    for (const q of expandida.perguntas)
       for (const o of q.opcoes)
         for (const r of o.requisitos || []) usadas.add(r.cap);
     for (const b of base.bancos)
       for (const cap of usadas)
-        assert.notEqual(b.caps[cap], undefined, `${b.id} não declara ${cap}`);
+        assert.notEqual(capsDe(b)[cap], undefined, `${b.id} não declara ${cap}`);
   });
 
   test("todo requisito com op=min aponta para uma escala existente", () => {
-    for (const q of politica.perguntas)
+    for (const q of expandida.perguntas)
       for (const o of q.opcoes)
         for (const r of o.requisitos || [])
           if (r.op === "min") {
@@ -91,7 +107,7 @@ describe("invariantes do motor", () => {
   });
 
   test("todo requisito tem motivo em texto — sem motivo, não há explicação", () => {
-    for (const q of politica.perguntas)
+    for (const q of expandida.perguntas)
       for (const o of q.opcoes)
         for (const r of o.requisitos || [])
           assert.ok(r.motivo && r.motivo.length > 10, `requisito sem motivo em ${q.id}/${o.id}`);
@@ -125,8 +141,26 @@ describe("invariantes do motor", () => {
     }
   });
 
+  /**
+   * Os números p/e são opinião; a classe PACELC declarada, com motivo, é o
+   * que se pode discutir. O número precisa cair na faixa da classe — senão
+   * o gráfico conta uma história e o texto conta outra.
+   */
+  test("todo banco declara classe PACELC com motivo, e o número cai na faixa da classe", () => {
+    for (const b of base.bancos) {
+      assert.ok(b.pacelc && b.pacelc.motivo && b.pacelc.motivo.length > 20, `${b.id} sem classe PACELC justificada`);
+      for (const eixo of ["p", "e"]) {
+        const faixaDaClasse = base.faixasPacelc[eixo][b.pacelc[eixo]];
+        assert.ok(faixaDaClasse, `${b.id}: classe ${eixo}="${b.pacelc[eixo]}" desconhecida`);
+        const v = b.caps[eixo];
+        assert.ok(v >= faixaDaClasse[0] && v <= faixaDaClasse[1],
+          `${b.id}: ${eixo}=${v} fora da faixa ${b.pacelc[eixo]} [${faixaDaClasse}]`);
+      }
+    }
+  });
+
   test("toda severidade usada existe na tabela de severidades", () => {
-    for (const q of politica.perguntas)
+    for (const q of expandida.perguntas)
       for (const o of q.opcoes)
         for (const r of o.requisitos || [])
           assert.ok(r.sev === "bloqueante" || typeof politica.severidades[r.sev] === "number",
@@ -153,6 +187,61 @@ describe("invariantes do motor", () => {
     assert.equal(alvo.e, +((0.92 + 0.15) / 2).toFixed(3));
     assert.equal(alvo.p, 0.5, "eixo sem contribuição fica no neutro");
   });
+
+  /**
+   * Requisito que nenhum banco reprova é ruído — a menos que esteja declarado
+   * `latente`: existe para o próximo banco (um SQLite reprovaria transação,
+   * distribuição e serviço gerenciado). Inércia declarada, não acidental.
+   */
+  test("nenhum requisito é letra morta: cada um reprova ao menos um banco, ou se declara latente", () => {
+    const mortos = [];
+    for (const q of expandida.perguntas)
+      for (const o of q.opcoes)
+        for (const r of o.requisitos || []) {
+          if (r.latente) continue;
+          const reprova = base.bancos.some(b => {
+            const caps = capsDe(b);
+            return r.op === "min"
+              ? base.escalas[r.cap].indexOf(caps[r.cap]) < base.escalas[r.cap].indexOf(r.valor)
+              : r.op === "eq" ? caps[r.cap] !== r.valor : !r.valor.includes(caps[r.cap]);
+          });
+          if (!reprova) mortos.push(`${q.id}/${o.id}/${r.cap}`);
+        }
+    assert.deepEqual(mortos, [], `requisitos que nunca disparam: ${mortos.join(", ")}`);
+  });
+});
+
+describe("pergunta gerada da base (incumbente)", () => {
+  test("uma opção por banco, extensões de fora, mais a opção fixa", () => {
+    const q = expandida.perguntas.find(x => x.id === "incumbente");
+    const ids = q.opcoes.map(o => o.id);
+    assert.ok(ids.includes("nenhum"));
+    assert.ok(ids.includes("postgres"));
+    assert.ok(!ids.includes("timescale"), "extensão não é opção: já está coberta pelo Postgres");
+    assert.equal(q.opcoesDe, undefined, "pergunta expandida perde o opcoesDe (idempotência)");
+    assert.deepEqual(expandirPolitica(base, expandida), expandida);
+  });
+
+  test("quem já opera Postgres já opera Timescale", () => {
+    const { viaveis } = avaliar(base, politica, { ...CASOS[6].r, incumbente: "postgres" }); // métricas → timescale
+    const ts = viaveis.find(v => v.id === "timescale");
+    assert.ok(!ts.perdas.some(p => p.capacidade === "sistema"), "Timescale pagou custo de adoção sendo Postgres");
+  });
+
+  test("o incumbente vira um empate técnico, mas não vence um especialista", () => {
+    const busca = { ...CASOS[3].r, incumbente: "postgres" };
+    const { viaveis } = avaliar(base, politica, busca);
+    assert.equal(viaveis[0].id, "elastic", "Postgres na casa não deveria vencer a busca do site");
+  });
+});
+
+describe("residência do dado", () => {
+  test("on-premises elimina o que só existe num provedor de nuvem", () => {
+    const { inviaveis } = avaliar(base, politica, { ...CASOS[7].r, hospedagem: "proprio" });
+    const dyn = inviaveis.find(b => b.id === "dynamodb");
+    assert.ok(dyn, "DynamoDB deveria estar fora com dado on-premises");
+    assert.equal(dyn.bloqueios[0].capacidade, "autoHospedado");
+  });
 });
 
 describe("robustez da política", () => {
@@ -177,24 +266,33 @@ describe("robustez da política", () => {
    * Os pesos (30/12/5 e o 25 do PACELC) são opinião. Se um âncora muda de
    * vencedor com ±20% num peso, o resultado vinha de coincidência numérica,
    * não da estrutura — é dado ou âncora para revisar, não peso para travar.
+   * A mesma bateria é a que a interface mostra ao usuário (robustez()).
    */
   test("vencedores dos âncoras aguentam ±20% em cada peso", () => {
-    const variacoes = [];
-    for (const sev of ["grave", "moderado", "leve"])
-      for (const f of [0.8, 1.2])
-        variacoes.push({ rotulo: `${sev}×${f}`, muda: p => { p.severidades[sev] *= f; } });
-    for (const f of [0.8, 1.2])
-      variacoes.push({ rotulo: `pacelc×${f}`, muda: p => { p.pesoDistanciaPacelc *= f; } });
-
-    for (const v of variacoes) {
-      const p = JSON.parse(JSON.stringify(politica));
-      v.muda(p);
-      for (const c of CASOS) {
-        const { viaveis } = avaliar(base, p, c.r);
-        assert.equal(viaveis[0] && viaveis[0].id, c.esperado,
-          `âncora "${c.nome}" muda de vencedor com ${v.rotulo}: margem frágil`);
-      }
+    for (const c of CASOS) {
+      const r = robustez(base, politica, c.r);
+      assert.equal(r.total, 8);
+      assert.ok(r.robusto,
+        `âncora "${c.nome}" muda de vencedor com ${r.viradas.map(v => `${v.rotulo} → ${v.vencedor}`).join("; ")}: margem frágil`);
     }
+  });
+
+  test("robustez() acusa um resultado que depende de um peso", () => {
+    // sem incumbente e com o CRUD, Postgres vence MySQL por pouco; com o peso do
+    // 'leve' zerado o grafo deixa de contar e a disputa fica no ruído
+    const pol = JSON.parse(JSON.stringify(politica));
+    pol.severidades.leve = 0;
+    const r = robustez(base, pol, CASOS[8].r);
+    assert.equal(typeof r.robusto, "boolean");
+    assert.equal(variacoesDePeso(politica).length, 8);
+  });
+
+  test("faixa traduz pontos em ordem, não em medida", () => {
+    assert.equal(faixa(politica, 91), "forte");
+    assert.equal(faixa(politica, 70), "viavel");
+    assert.equal(faixa(politica, 40), "ressalvas");
+    const { viaveis } = avaliar(base, politica, CASOS[0].r);
+    assert.equal(viaveis[0].faixa, faixa(politica, viaveis[0].pontos));
   });
 });
 
@@ -207,7 +305,7 @@ describe("casos adversariais — pares em disputa real", () => {
     { nome: "checkout de e-commerce", topo: ["cockroach", "postgres"],
       r: { atomicidade:"multi", invariantes:"banco", skew:"nao", perda:"zero", geografia:"leitura-global",
            particao:"errar", leitura:"forte", latencia:"tolerante", acesso:"adhoc", formato:"tabular",
-           escala:"crescente", operacao:"gerenciado" } }
+           escala:"crescente", operacao:"gerenciado", hospedagem:"nuvem", incumbente:"nenhum" } }
   ];
   for (const c of PARES) {
     test(c.nome, () => {

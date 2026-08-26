@@ -1,0 +1,7 @@
+.git
+.gitignore
+.dockerignore
+.claude
+node_modules
+README.md
+**/*.test.js

@@ -1,5 +1,5 @@
 {
-  "versaoPolitica": "2026-08-26",
+  "versaoPolitica": "2026-08-26b",
   "severidades": {
     "bloqueante": null,
     "grave": 30,
@@ -7,6 +7,10 @@
     "leve": 5
   },
   "pesoDistanciaPacelc": 25,
+  "faixas": {
+    "forte": 85,
+    "viavel": 60
+  },
   "grupos": [
     {
       "id": "consistencia",
@@ -30,7 +34,7 @@
       "id": "alem",
       "selo": "Fora do teorema",
       "titulo": "O que o CAP não cobre",
-      "descricao": "Consulta, formato, escala e operação: nada disso aparece no teorema — e é o que decide a maioria dos casos reais."
+      "descricao": "Consulta, formato, escala, operação e o que já existe na casa: nada disso aparece no teorema — e é o que decide a maioria dos casos reais."
     }
   ],
   "perguntas": [
@@ -44,13 +48,14 @@
         {
           "id": "agregado",
           "texto": "Um só — mesmo que ele carregue uma lista dentro",
-          "exemplo": "o pedido com seus itens é um registro só: salva junto, lê junto",
+          "exemplo": "o pedido com seus itens: salva junto, lê junto",
           "requisitos": [
             {
               "cap": "transacao",
               "op": "min",
               "valor": "documento",
               "sev": "grave",
+              "latente": true,
               "motivo": "não garante nem que um registro inteiro entre de uma vez"
             }
           ]
@@ -58,7 +63,7 @@
         {
           "id": "multi",
           "texto": "Vários, separados — e ou salvam todos, ou nenhum",
-          "exemplo": "transferência: tira R$ 100 de uma conta e põe na outra. Parar no meio é inaceitável.",
+          "exemplo": "Pix: sai de uma conta e entra na outra. Parar no meio é inaceitável.",
           "requisitos": [
             {
               "cap": "transacao",
@@ -91,7 +96,7 @@
       "grupo": "consistencia",
       "termo": "integridade",
       "titulo": "Quem barra um dado inválido: o banco ou o seu código?",
-      "ajuda": "Inválido assim: dois cadastros com o mesmo CPF, ou um pedido apontando para um cliente que não existe.",
+      "ajuda": "Inválido assim: dois clientes com o mesmo CPF, ou um pedido apontando para um cliente que não existe. O banco pode recusar isso sozinho — ou confiar que o código nunca deixa passar.",
       "opcoes": [
         {
           "id": "banco",
@@ -116,13 +121,14 @@
         },
         {
           "id": "app",
-          "texto": "O código da aplicação valida antes. Se escapar, corrigimos depois",
-          "exemplo": "funciona quando dá para reconstruir o dado a partir da origem",
+          "texto": "O código valida antes. Se escapar, corrigimos depois",
+          "exemplo": "funciona quando o dado tem uma origem de onde pode ser reconstruído",
           "requisitos": []
         },
         {
           "id": "misto",
-          "texto": "O essencial o banco barra; o resto fica no código",
+          "texto": "O essencial o banco barra; a regra de negócio fica no código",
+          "exemplo": "CPF único o banco garante; “cliente inadimplente não compra” fica no código",
           "requisitos": [
             {
               "cap": "unicidade",
@@ -140,7 +146,7 @@
       "grupo": "consistencia",
       "termo": "write skew",
       "titulo": "Existe regra do tipo “no máximo N” ou “pelo menos um”, contando vários registros?",
-      "ajuda": "O caso clássico: “pelo menos um médico de plantão”. Dois pedem folga no mesmo segundo, cada um olha e vê o outro de plantão, os dois saem — a regra quebrou sem nenhum registro estar errado sozinho.",
+      "ajuda": "O caso clássico: “pelo menos um médico de plantão”. Dois pedem folga no mesmo segundo, cada um olha e vê o outro de plantão, os dois saem — a regra quebrou sem nenhum registro estar errado sozinho. Só o banco consegue ver as duas gravações ao mesmo tempo.",
       "opcoes": [
         {
           "id": "sim",
@@ -189,7 +195,7 @@
         {
           "id": "zero",
           "texto": "Não pode. Se o usuário viu “salvo”, tem que estar salvo",
-          "exemplo": "pagamento, lançamento contábil, contrato assinado",
+          "exemplo": "Pix, nota fiscal emitida, contrato assinado",
           "requisitos": [
             {
               "cap": "durabilidadeSincrona",
@@ -203,7 +209,7 @@
         {
           "id": "segundos",
           "texto": "Alguns segundos, tudo bem",
-          "exemplo": "comentário, curtida: chato de perder, fácil de refazer",
+          "exemplo": "comentário, curtida, rascunho: chato de perder, fácil de refazer",
           "requisitos": [
             {
               "cap": "fonteVerdade",
@@ -217,7 +223,7 @@
         {
           "id": "reprocessa",
           "texto": "Pode perder. A origem envia de novo",
-          "exemplo": "log, métrica, evento de fila que dá para reprocessar",
+          "exemplo": "log, métrica, evento de fila que o produtor reenvia",
           "requisitos": []
         }
       ]
@@ -232,27 +238,19 @@
         {
           "id": "local",
           "texto": "Tudo numa região ou datacenter só",
-          "exemplo": "sistema interno, SaaS atendendo um país",
+          "exemplo": "sistema interno, SaaS atendendo o Brasil",
           "requisitos": []
         },
         {
           "id": "leitura-global",
           "texto": "Usuários espalhados, mas a escrita concentrada numa região",
-          "exemplo": "conteúdo lido no mundo todo, editado por um time só",
-          "requisitos": [
-            {
-              "cap": "distribuicao",
-              "op": "min",
-              "valor": "manual",
-              "sev": "moderado",
-              "motivo": "não tem caminho pronto para aproximar cópias de leitura dos usuários"
-            }
-          ]
+          "exemplo": "catálogo lido no mundo todo, editado por um time só",
+          "requisitos": []
         },
         {
           "id": "escrita-global",
           "texto": "Gravação em várias regiões ao mesmo tempo",
-          "exemplo": "o usuário grava em São Paulo e em Frankfurt, e os dois enxergam tudo",
+          "exemplo": "o usuário grava em São Paulo e em Lisboa, e os dois lados enxergam tudo",
           "requisitos": [
             {
               "cap": "distribuicao",
@@ -270,12 +268,12 @@
       "grupo": "particao",
       "termo": "teorema CAP",
       "titulo": "Se a rede entre as cópias do banco falhar, o sistema para ou segue no ar?",
-      "ajuda": "Esta é a pergunta central do teorema CAP. Com as cópias sem se enxergar, não dá para ter os dois: ou o sistema recusa operações até a rede voltar (escolhe C), ou segue no ar sabendo que pode responder dado desatualizado (escolhe A).",
+      "ajuda": "Esta é a pergunta central do teorema CAP. Com as cópias sem se enxergar, não dá para ter os dois: ou o sistema recusa operações até a rede voltar (escolhe C), ou segue no ar sabendo que pode responder dado desatualizado (escolhe A). Regra prática: se o dado é dinheiro, estoque ou vaga, pare. Se é conteúdo, feed ou carrinho, siga.",
       "opcoes": [
         {
           "id": "errar",
           "texto": "Para. Responder errado é pior que ficar fora do ar",
-          "exemplo": "saldo, estoque — número que não pode mentir",
+          "exemplo": "saldo, estoque, vaga — número que não pode mentir",
           "pacelc": {
             "p": 0.95
           },
@@ -306,7 +304,7 @@
       "grupo": "else",
       "termo": "read-your-writes",
       "titulo": "Depois de salvar, o usuário precisa ver a mudança na hora?",
-      "ajuda": "Ler de uma cópia é mais rápido e alivia o banco principal — mas a cópia costuma estar alguns instantes atrás.",
+      "ajuda": "Ler de uma cópia é mais rápido e alivia o banco principal — mas a cópia costuma estar alguns instantes atrás. A pergunta é se alguém vai notar.",
       "opcoes": [
         {
           "id": "forte",
@@ -335,6 +333,7 @@
         {
           "id": "lag",
           "texto": "Em telas de consulta, uns segundos de atraso são aceitáveis",
+          "exemplo": "relatório, listagem administrativa, painel de acompanhamento",
           "pacelc": {
             "e": 0.5
           },
@@ -343,7 +342,7 @@
         {
           "id": "eventual",
           "texto": "Pode demorar mais. Ninguém vai notar",
-          "exemplo": "contador de visualizações, painel gerencial",
+          "exemplo": "contador de visualizações, painel gerencial do mês",
           "pacelc": {
             "e": 0.15
           },
@@ -379,7 +378,7 @@
         {
           "id": "tolerante",
           "texto": "Pode levar mais — vale mais estar certo que ser rápido",
-          "exemplo": "confirmação de pagamento, fechamento, relatório",
+          "exemplo": "confirmação de pagamento, fechamento contábil, relatório",
           "pacelc": {
             "e": 0.8
           },
@@ -397,7 +396,7 @@
         {
           "id": "chave",
           "texto": "Pelo id ou código, e eu já sei qual quero",
-          "exemplo": "carregar o usuário 4821",
+          "exemplo": "carregar o cliente 4821, o pedido #A17",
           "requisitos": []
         },
         {
@@ -424,7 +423,7 @@
         {
           "id": "texto",
           "texto": "Digitando palavras, como num campo de busca",
-          "exemplo": "procurar “tenis corrida azul” e vir ordenado por relevância",
+          "exemplo": "procurar “tenis corrida azul” e vir ordenado por relevância, mesmo com erro de digitação",
           "requisitos": [
             {
               "cap": "busca",
@@ -445,7 +444,7 @@
         {
           "id": "grafo",
           "texto": "Seguindo as ligações entre uma coisa e outra",
-          "exemplo": "quem é sócio de quem, descendo cinco níveis",
+          "exemplo": "quem é sócio de quem, descendo cinco níveis; quem indicou quem",
           "requisitos": [
             {
               "cap": "grafo",
@@ -470,6 +469,7 @@
       "grupo": "alem",
       "termo": "modelo de dados",
       "titulo": "Como esse dado se organiza?",
+      "ajuda": "Não é sobre JSON ou tabela: é sobre a forma natural do dado. Forçar uma forma na outra funciona — e cobra em toda consulta.",
       "opcoes": [
         {
           "id": "tabular",
@@ -509,7 +509,7 @@
         {
           "id": "serie",
           "texto": "Chega o tempo todo com data e hora, e nunca mais muda",
-          "exemplo": "leitura de sensor, métrica de servidor",
+          "exemplo": "leitura de sensor, métrica de servidor, posição do entregador",
           "requisitos": [
             {
               "cap": "serie",
@@ -530,7 +530,7 @@
         {
           "id": "efemero",
           "texto": "Vive pouco e é lido o tempo todo",
-          "exemplo": "sessão de login, carrinho, cache, contador de tentativas",
+          "exemplo": "sessão de login, carrinho, cache, contador de tentativas de senha",
           "requisitos": [
             {
               "cap": "efemeroOk",
@@ -548,11 +548,11 @@
       "grupo": "alem",
       "termo": "escala de escrita",
       "titulo": "Quantas gravações por segundo, de verdade?",
-      "ajuda": "Use o número de hoje multiplicado por três, não o do slide para investidor. A maioria dos sistemas corporativos nunca sai da primeira faixa.",
+      "ajuda": "Use o número de hoje multiplicado por três, não o do slide para investidor. Referência honesta: um único servidor PostgreSQL bem configurado passa de dez mil gravações simples por segundo — a maioria dos sistemas corporativos nunca chega perto.",
       "opcoes": [
         {
           "id": "vertical",
-          "texto": "Centenas. Uma máquina bem dimensionada aguenta",
+          "texto": "Até uns milhares. Uma máquina bem dimensionada aguenta",
           "exemplo": "é aqui que quase todo sistema interno vive a vida inteira",
           "requisitos": [
             {
@@ -575,21 +575,23 @@
         },
         {
           "id": "crescente",
-          "texto": "Milhares, e crescendo. Vou precisar de cópias de leitura",
+          "texto": "Dezenas de milhares, e crescendo. Vou precisar de cópias de leitura",
+          "exemplo": "app com público grande no horário de pico",
           "requisitos": [
             {
               "cap": "distribuicao",
               "op": "min",
               "valor": "manual",
               "sev": "moderado",
+              "latente": true,
               "motivo": "sem caminho claro para dividir a carga depois"
             }
           ]
         },
         {
           "id": "horizontal",
-          "texto": "Dezenas de milhares ou mais, desde o primeiro dia",
-          "exemplo": "telemetria de milhares de dispositivos ao mesmo tempo",
+          "texto": "Centenas de milhares ou mais, desde o primeiro dia",
+          "exemplo": "telemetria de milhões de dispositivos, eventos de clique",
           "requisitos": [
             {
               "cap": "distribuicao",
@@ -619,6 +621,7 @@
               "op": "eq",
               "valor": true,
               "sev": "bloqueante",
+              "latente": true,
               "motivo": "não existe como serviço gerenciado maduro"
             }
           ]
@@ -626,6 +629,7 @@
         {
           "id": "experiente",
           "texto": "Temos gente que já opera banco em produção",
+          "exemplo": "DBA ou SRE que já restaurou um backup de verdade",
           "requisitos": []
         },
         {
@@ -662,6 +666,74 @@
               "motivo": "se aparecer consulta por ligações, vai exigir um segundo sistema"
             }
           ]
+        }
+      ]
+    },
+    {
+      "id": "hospedagem",
+      "grupo": "alem",
+      "termo": "residência do dado",
+      "titulo": "Onde o dado pode morar?",
+      "ajuda": "Contrato, LGPD ou política interna às vezes decidem isso antes de qualquer critério técnico — e um banco que só existe num provedor de nuvem some da lista.",
+      "opcoes": [
+        {
+          "id": "nuvem",
+          "texto": "Em qualquer nuvem pública",
+          "exemplo": "SaaS sem restrição de residência; região de São Paulo resolve a LGPD",
+          "requisitos": []
+        },
+        {
+          "id": "portavel",
+          "texto": "Em nuvem, mas sem depender de um provedor só",
+          "exemplo": "precisa rodar igual na AWS, na Azure e no datacenter do cliente",
+          "requisitos": [
+            {
+              "cap": "autoHospedado",
+              "op": "eq",
+              "valor": true,
+              "sev": "grave",
+              "motivo": "prende você a um único provedor de nuvem"
+            }
+          ]
+        },
+        {
+          "id": "proprio",
+          "texto": "Nos nossos servidores ou nuvem privada",
+          "exemplo": "banco, governo, hospital: o dado não sai de casa",
+          "requisitos": [
+            {
+              "cap": "autoHospedado",
+              "op": "eq",
+              "valor": true,
+              "sev": "bloqueante",
+              "motivo": "só existe como serviço de um provedor de nuvem"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "incumbente",
+      "grupo": "alem",
+      "termo": "custo de adoção",
+      "titulo": "Que banco o time já opera em produção hoje?",
+      "ajuda": "É o critério que mais acerta na prática: um banco que o time já sabe levantar às três da manhã ganha de um tecnicamente superior que ninguém conhece. Aqui, todo outro candidato paga o custo de ser novo — o suficiente para virar um empate, não para vencer um especialista.",
+      "opcoesDe": "bancos",
+      "modelo": [
+        {
+          "cap": "sistema",
+          "op": "eq",
+          "valor": "@opcao",
+          "sev": "moderado",
+          "motivo": "é um sistema novo para o time aprender a operar"
+        }
+      ],
+      "opcoes": [
+        {
+          "id": "nenhum",
+          "texto": "Nenhum — estamos começando do zero",
+          "exemplo": "ou nenhum dos da lista",
+          "requisitos": []
         }
       ]
     }

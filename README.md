@@ -2,20 +2,44 @@
 
 Qual banco, e por quê.
 
-Doze perguntas sobre o que você está construindo — nenhuma sobre banco de
-dados —, organizadas pelos tópicos do teorema CAP e do PACELC. Devolve um
+Catorze perguntas sobre o que você está construindo — nenhuma sobre banco
+de dados —, organizadas pelos tópicos do teorema CAP e do PACELC. Devolve um
 ranking, por que o vencedor venceu e como cada ponto foi perdido, quais das
-suas respostas realmente seguram o resultado, e um ADR pronto para o
-repositório.
+suas respostas realmente seguram o resultado, o quanto ele aguenta mudar os
+pesos, e um ADR pronto para o repositório com o link que reproduz a decisão.
 
 Zero dependências. Node só para servir os arquivos e rodar os testes.
 
 ## Rodar
 
 ```bash
-npm start     # http://localhost:5173
-npm test      # 40 testes: âncoras, invariantes, robustez de pesos, pares adversariais, simulador CAP
+npm start     # http://localhost:5173  (PORTA=5199 npm start para outra porta)
+npm test      # 50 testes: âncoras, invariantes, robustez de pesos, pares adversariais, simulador CAP
 ```
+
+## O que isto é — e o que não é
+
+É uma ferramenta de **apoio**: estrutura a conversa, força as perguntas que
+costumam ficar de fora e entrega um ADR com o raciocínio. Não é um oráculo.
+A pontuação é **ordem, não medida**: diferença abaixo de dez pontos é ruído
+do modelo, e a interface diz isso. Três mecanismos mantêm a honestidade:
+
+- **Faixas em vez de precisão falsa.** "Forte candidato", "viável" e "com
+  ressalvas" (`faixas` em `perguntas.json`) são o que se comunica; o número
+  fica para a auditoria.
+- **Robustez visível.** Os pesos (30/12/5 e o 25 do PACELC) são opinião. O
+  motor roda oito variações de ±20% e a tela diz se o vencedor sobrevive a
+  todas ("robusto") ou com qual delas viraria ("frágil: com *grave ×0.8*
+  venceria MySQL"). É a mesma bateria que vigia os casos-âncora nos testes.
+- **Link reproduzível.** As respostas vivem na URL e o ADR carrega o link:
+  quem abrir daqui a um ano vê as mesmas respostas e o mesmo resultado, para a
+  mesma versão da base e da política.
+
+O que ainda falta para confiar de olhos fechados: calibração contra decisões
+reais. A base tem dez bancos avaliados numa versão cada; se o seu caso é SQL
+Server, Oracle, SQLite ou um OLAP analítico, a resposta certa não está na
+lista — e a tela mostra "nenhum candidato viável" ou um vencedor por falta de
+concorrente. Adicione o banco e o âncora dele.
 
 Não abra `src/web/index.html` direto pelo Explorer. O navegador bloqueia
 `fetch()` em `file://` e a base de dados não carrega — a tela mostra um aviso
@@ -78,6 +102,15 @@ pontos. Quando mais de uma pergunta alimenta o mesmo eixo, o alvo é a média
 das contribuições: tensão entre respostas ("quero read-your-writes E
 milissegundos") vira meio-termo declarado, não sobrescrita silenciosa.
 
+Os números `p`/`e` são opinião — por isso cada banco declara também a
+**classe PACELC** (`pacelc.p` em PA / ajustável / PC, `pacelc.e` em EL /
+ajustável / EC) com o `motivo` baseado na configuração padrão: é a classe,
+com o motivo, que se discute. Um teste garante que o número cai na faixa da
+classe (`faixasPacelc`), para o gráfico não contar uma história e o texto
+outra. Banco de nó único (`noUnico`) fica no lado PC por convenção — isolado
+pela rede, ele simplesmente para — e aparece vazado no gráfico, porque ali o
+eixo P não é medida.
+
 O questionário é apresentado em quatro grupos, um por tópico dos modelos
 (`grupos` em `perguntas.json`):
 
@@ -87,12 +120,31 @@ O questionário é apresentado em quatro grupos, um por tópico dos modelos
   (a chance de partição na sua topologia) e o que fazer quando ela acontece.
 - **PACELC · ELC — O dia a dia sem falha:** read-your-writes e orçamento de
   latência — o *else* do PACELC.
-- **Fora do teorema:** padrão de acesso, modelo de dados, escala e operação.
+- **Fora do teorema:** padrão de acesso, modelo de dados, escala, operação,
+  onde o dado pode morar e **que banco o time já opera**.
 
 De propósito, PACELC é só uma fatia da nota: o teorema não diz nada sobre
 transação, integridade, modelo de consulta nem custo operacional — e é isso
 que decide a maioria dos casos reais. O último grupo existe — e pesa — por
-isso.
+isso. Duas perguntas dele merecem nota:
+
+**Incumbente.** O critério que mais acerta na prática é "o que o time já
+sabe levantar às três da manhã". A pergunta lista os bancos da base
+(`opcoesDe: "bancos"`) e todo *outro* candidato paga um custo moderado por
+ser novo — ninguém ganha ponto, o que muda é que o custo de adoção passa a
+existir. Doze pontos decidem um empate técnico (o CRUD vira MySQL numa casa
+MySQL) e não vencem um especialista (a busca do site continua Elasticsearch
+numa casa Postgres); os dois casos são âncora. Extensão conta como o banco de
+origem: quem opera Postgres já opera Timescale.
+
+**Residência do dado.** LGPD, contrato ou política interna às vezes decidem
+antes de qualquer critério técnico. On-premises elimina o que só existe num
+provedor de nuvem (`autoHospedado`).
+
+Requisito que nenhum banco da base reprova hoje é ruído — a menos que se
+declare `latente`: existe para o próximo banco (um SQLite reprovaria
+transação, distribuição e serviço gerenciado). Um teste acusa os não
+declarados.
 
 ## As decisões que sustentam o resultado
 

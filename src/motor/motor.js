@@ -15,6 +15,15 @@ export function comparaEscala(escala, valorBanco, valorMinimo) {
   return a - b; // >= 0 significa que atende
 }
 
+/**
+ * Capacidades de um banco como a política as enxerga. Além das declaradas,
+ * `sistema` identifica o software de fato: uma extensão (derivaDe) é o mesmo
+ * sistema que o banco de origem — quem já opera Postgres já opera Timescale.
+ */
+export function capsDe(banco) {
+  return { ...banco.caps, sistema: banco.derivaDe || banco.id };
+}
+
 export function atende(req, caps, escalas) {
   const valor = caps[req.cap];
   if (valor === undefined) throw new Error(`capacidade desconhecida: ${req.cap}`);
@@ -26,10 +35,31 @@ export function atende(req, caps, escalas) {
   }
 }
 
+/**
+ * Perguntas com `opcoesDe: "bancos"` ganham uma opção por banco da base
+ * (extensões ficam de fora: já estão cobertas pelo banco de origem), com os
+ * requisitos do `modelo` e "@opcao" substituído pelo id. Idempotente: a
+ * pergunta expandida perde o `opcoesDe`.
+ */
+export function expandirPolitica(base, politica) {
+  return {
+    ...politica,
+    perguntas: politica.perguntas.map(q => {
+      if (q.opcoesDe !== "bancos") return q;
+      const { opcoesDe, modelo, ...resto } = q;
+      const geradas = base.bancos.filter(b => !b.derivaDe).map(b => ({
+        id: b.id, texto: b.nome, exemplo: b.familia,
+        requisitos: (modelo || []).map(r => ({ ...r, valor: r.valor === "@opcao" ? b.id : r.valor }))
+      }));
+      return { ...resto, opcoes: [...(q.opcoes || []), ...geradas] };
+    })
+  };
+}
+
 /** Avalia um único conjunto de respostas. */
 export function avaliar(base, politica, respostas) {
   const { escalas, bancos } = base;
-  const { severidades, pesoDistanciaPacelc, perguntas } = politica;
+  const { severidades, pesoDistanciaPacelc, perguntas } = expandirPolitica(base, politica);
 
   // 1. alvo PACELC derivado das respostas. Mais de uma pergunta pode puxar o
   //    mesmo eixo (read-your-writes e latência puxam `e`); o alvo é a média
@@ -61,6 +91,7 @@ export function avaliar(base, politica, respostas) {
 
   // 3. para cada banco: restrições duras primeiro, depois penalidades
   const avaliados = elegiveis.map(b => {
+    const caps = capsDe(b);
     const bloqueios = [];
     const perdas = [];
     let pontos = 100;
@@ -71,10 +102,10 @@ export function avaliar(base, politica, respostas) {
       const o = q.opcoes.find(x => x.id === escolha);
       if (!o) throw new Error(`resposta inválida para ${q.id}: ${escolha}`);
       for (const req of o.requisitos || []) {
-        if (atende(req, b.caps, escalas)) continue;
+        if (atende(req, caps, escalas)) continue;
         const registro = {
           pergunta: q.id, resposta: o.id, capacidade: req.cap,
-          exigido: req.valor, tem: b.caps[req.cap], motivo: req.motivo,
+          exigido: req.valor, tem: caps[req.cap], motivo: req.motivo,
           ressalva: (b.ressalvas || {})[req.cap] || null
         };
         if (req.sev === "bloqueante") { bloqueios.push(registro); continue; }
@@ -107,15 +138,17 @@ export function avaliar(base, politica, respostas) {
       if (!o) continue;
       for (const req of o.requisitos || []) {
         const r = (b.ressalvas || {})[req.cap];
-        if (r && atende(req, b.caps, escalas) && !avisos.includes(r)) avisos.push(r);
+        if (r && atende(req, caps, escalas) && !avisos.includes(r)) avisos.push(r);
       }
     }
     if ((b.ressalvas || {}).papel) avisos.unshift(b.ressalvas.papel);
 
     return {
       id: b.id, nome: b.nome, familia: b.familia, versaoAvaliada: b.versaoAvaliada,
+      noUnico: !!b.noUnico,
       viavel: bloqueios.length === 0,
       pontos: Math.max(0, pontos),
+      faixa: faixa(politica, Math.max(0, pontos)),
       distanciaPacelc: +dist.toFixed(3),
       bloqueios, perdas, avisos
     };
@@ -126,6 +159,51 @@ export function avaliar(base, politica, respostas) {
     .sort((a, b) => a.bloqueios.length - b.bloqueios.length);
 
   return { alvo, viaveis, inviaveis, naoJustificados };
+}
+
+/**
+ * Pontuação é ordem, não medida: a diferença entre 91 e 87 é ruído do modelo.
+ * A faixa é o que se comunica; o número fica para a auditoria.
+ */
+export function faixa(politica, pontos) {
+  const f = politica.faixas || { forte: 85, viavel: 60 };
+  if (pontos >= f.forte) return "forte";
+  if (pontos >= f.viavel) return "viavel";
+  return "ressalvas";
+}
+
+/**
+ * Os pesos (30/12/5 e o 25 do PACELC) são opinião. As oito variações de ±20%
+ * são a mesma bateria que os testes usam para vigiar os âncoras — aqui elas
+ * viram informação para o usuário: um vencedor que sobrevive a todas está
+ * apoiado em estrutura; um que vira com uma delas está apoiado em coincidência.
+ */
+export function variacoesDePeso(politica) {
+  const variacoes = [];
+  for (const sev of ["grave", "moderado", "leve"])
+    for (const f of [0.8, 1.2])
+      variacoes.push({ rotulo: `${sev} ×${f}`, muda: p => { p.severidades[sev] *= f; } });
+  for (const f of [0.8, 1.2])
+    variacoes.push({ rotulo: `PACELC ×${f}`, muda: p => { p.pesoDistanciaPacelc *= f; } });
+  return variacoes.map(v => {
+    const p = JSON.parse(JSON.stringify(politica));
+    v.muda(p);
+    return { rotulo: v.rotulo, politica: p };
+  });
+}
+
+export function robustez(base, politica, respostas) {
+  const atual = avaliar(base, politica, respostas);
+  const vencedor = atual.viaveis[0] ? atual.viaveis[0].id : null;
+  const variacoes = variacoesDePeso(politica);
+  const viradas = [];
+  for (const v of variacoes) {
+    const r = avaliar(base, v.politica, respostas);
+    const novo = r.viaveis[0] ? r.viaveis[0].id : null;
+    if (novo !== vencedor)
+      viradas.push({ rotulo: v.rotulo, vencedor: novo ? r.viaveis[0].nome : "nenhum candidato viável" });
+  }
+  return { vencedor, robusto: viradas.length === 0, total: variacoes.length, viradas };
 }
 
 /**
@@ -174,16 +252,17 @@ export function porQueVenceu(politica, resultado) {
  * está realmente segurando esse resultado".
  */
 export function sensibilidade(base, politica, respostas) {
-  const atual = avaliar(base, politica, respostas);
+  const pol = expandirPolitica(base, politica);
+  const atual = avaliar(base, pol, respostas);
   const vencedor = atual.viaveis[0] ? atual.viaveis[0].id : null;
   const criticas = [];
 
-  for (const q of politica.perguntas) {
+  for (const q of pol.perguntas) {
     if (!respostas[q.id]) continue;
     const alternativos = new Set();
     for (const o of q.opcoes) {
       if (o.id === respostas[q.id]) continue;
-      const r = avaliar(base, politica, { ...respostas, [q.id]: o.id });
+      const r = avaliar(base, pol, { ...respostas, [q.id]: o.id });
       const novo = r.viaveis[0] ? r.viaveis[0].id : null;
       if (novo !== vencedor) alternativos.add(`${o.texto} → ${novo ? r.viaveis[0].nome : "nenhum candidato viável"}`);
     }
@@ -197,7 +276,7 @@ export function sensibilidade(base, politica, respostas) {
     ? atual.viaveis[0].pontos - atual.viaveis[1].pontos : null;
 
   // valor da informação: perguntas respondidas com incerteza E que são críticas
-  const incertas = politica.perguntas
+  const incertas = pol.perguntas
     .filter(q => {
       const o = q.opcoes.find(x => x.id === respostas[q.id]);
       return o && o.incerta;
